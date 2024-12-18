@@ -66,14 +66,31 @@ func main() {
 
 	client := <-ch
 
-	tracks, err := client.CurrentUsersTracks(context.Background())
+	// TODO: parallelize somehow
+	userTracks, err := client.CurrentUsersTracks(context.Background())
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for i := 0; i < len(tracks.Tracks); i++ {
-		track := tracks.Tracks[i]
+	for i := 0; i < len(userTracks.Tracks); i++ {
+		track := userTracks.Tracks[i]
 		fmt.Println(i, track.Name, track.Artists[0].Name)
+	}
+
+	offset := len(userTracks.Tracks)
+
+	for userTracks.Next != "" {
+		userTracks, err = client.CurrentUsersTracks(context.Background(), spotify.Offset(offset))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for i := 0; i < len(userTracks.Tracks); i++ {
+			track := userTracks.Tracks[i]
+			fmt.Println(i+offset, track.Name, track.Artists[0].Name)
+			offset += 1
+		}
 	}
 }
