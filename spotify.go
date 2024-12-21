@@ -14,6 +14,7 @@ import (
 type SpotifySong struct {
 	Name   string `db:"name"`
 	Artist string `db:"artist"`
+	Album  string `db:"album"`
 	Index  int    `db:"index"`
 }
 
@@ -52,9 +53,10 @@ func fetchSpotifySongs() []SpotifySong {
 		tracks = append(tracks, SpotifySong{
 			Name:   track.Name,
 			Artist: track.Artists[0].Name,
-			Index:  i,
+			Album:  track.Album.Name,
+			Index:  i + 1,
 		})
-		fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i, track.Name, track.Artists[0].Name)
+		fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+1, track.Name, track.Artists[0].Name)
 	}
 
 	offset := len(userTracks.Tracks)
@@ -71,9 +73,10 @@ func fetchSpotifySongs() []SpotifySong {
 			tracks = append(tracks, SpotifySong{
 				Name:   track.Name,
 				Artist: track.Artists[0].Name,
-				Index:  i + offset,
+				Album:  track.Album.Name,
+				Index:  i + offset + 1,
 			})
-			fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+offset, track.Name, track.Artists[0].Name)
+			fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+offset+1, track.Name, track.Artists[0].Name)
 		}
 
 		offset += len(userTracks.Tracks)
