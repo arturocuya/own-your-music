@@ -4,11 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"net/url"
-	"strings"
-	"time"
 
-	"github.com/gocolly/colly/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
@@ -100,50 +96,6 @@ func main() {
 
 	// TODO: parallelize somehow
 	for _, track := range tracks {
-		fmt.Printf("checking #%d: %s by %s from %s\n", track.Index, track.Name, track.Artist, track.Album)
-		c := colly.NewCollector(
-			colly.AllowedDomains("bandcamp.com"),
-		)
-
-		c.OnHTML(".results", func(e *colly.HTMLElement) {
-			e.ForEachWithBreak(".searchresult", func(i int, h *colly.HTMLElement) bool {
-				itemType := h.ChildText(".result-info .itemtype")
-
-				if itemType != "TRACK" {
-					return true
-				}
-
-				songName := h.ChildText(".result-info .heading")
-
-				if songName != track.Name {
-					return true
-				}
-
-				subheading := strings.ToLower(h.ChildText(".result-info .subhead"))
-				if strings.Contains(subheading, strings.ToLower(track.Artist)) && strings.Contains(subheading, strings.ToLower(track.Album)) {
-					url := h.ChildText(".result-info .itemurl")
-
-					fmt.Printf("Match found! %s / %s : %s\n", songName, subheading, url)
-					return false
-				} else {
-					return true
-				}
-			})
-		})
-
-		c.OnError(func(r *colly.Response, err error) {
-			fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
-
-			if err.Error() == "Too Many Requests" {
-				time.Sleep(3 * time.Minute)
-			}
-		})
-
-		c.Visit(fmt.Sprintf(
-			"https://bandcamp.com/search?q=%s&item_type=t&from=results",
-			url.QueryEscape(track.Name),
-		))
-
-		c.Wait()
+		findSongInBandcampV1(&track)
 	}
 }
