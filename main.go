@@ -1,18 +1,20 @@
 package main
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
 	"log"
-	"net/http"
-	"os"
 
-	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
-	"github.com/labstack/echo/v4"
-	"github.com/zmb3/spotify/v2"
-	spotifyauth "github.com/zmb3/spotify/v2/auth"
+	_ "github.com/mattn/go-sqlite3"
 )
+
+type BandcampArtist struct {
+	Name     string
+	Location string
+	StoreUrl string
+}
 
 func main() {
 	err := godotenv.Load(".env")
@@ -20,77 +22,67 @@ func main() {
 		panic(err.Error())
 	}
 
-	auth := spotifyauth.New(
-		spotifyauth.WithRedirectURL("http://localhost:8080/callback"),
-		spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate, spotifyauth.ScopeUserLibraryRead),
-		spotifyauth.WithClientID(os.Getenv("SPOTIFY_CLIENT_ID")),
-		spotifyauth.WithClientSecret(os.Getenv("SPOTIFY_CLIENT_SECRET")),
-	)
+	dbPath := "./database.sqlite"
 
-	fmt.Println("client id:", os.Getenv("SPOTIFY_ID"))
-
-	ch := make(chan *spotify.Client)
-
-	state := uuid.New().String()
-
-	e := echo.New()
-
-	e.GET("/callback", func(c echo.Context) error {
-		token, err := auth.Token(c.Request().Context(), state, c.Request())
-
-		if err != nil {
-			return c.String(http.StatusForbidden, "could not get token")
-		}
-
-		if receivedState := c.FormValue("state"); receivedState != state {
-			log.Fatalf("state mismatch: %s != %s", receivedState, state)
-			return c.String(http.StatusNotFound, "state mismatch")
-		}
-
-		client := spotify.New(auth.Client(c.Request().Context(), token))
-
-		fmt.Println("login completed!")
-
-		ch <- client
-
-		return c.String(http.StatusOK, "ok")
-	})
-
-	go func() {
-		e.Logger.Fatal(e.Start(":8080"))
-	}()
-
-	url := auth.AuthURL(state)
-
-	fmt.Printf("login here: %v", url)
-
-	client := <-ch
-
-	// TODO: parallelize somehow
-	userTracks, err := client.CurrentUsersTracks(context.Background())
+	db, err := sqlx.Open("sqlite3", dbPath)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("error opening database: ", err)
 	}
 
-	for i := 0; i < len(userTracks.Tracks); i++ {
-		track := userTracks.Tracks[i]
-		fmt.Println(i, track.Name, track.Artists[0].Name)
+	defer db.Close()
+
+	err = db.Ping()
+
+	if err != nil {
+		log.Fatal("error pinging db", err)
 	}
 
-	offset := len(userTracks.Tracks)
+	// check if spotify songs table exists
+	query := "select name from sqlite_master where type='table' and name=?"
+	row := db.QueryRow(query, "spotify_songs")
+	var name string
 
-	for userTracks.Next != "" {
-		userTracks, err = client.CurrentUsersTracks(context.Background(), spotify.Offset(offset))
+	err = row.Scan(&name)
+
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Fatal("error checking spotify_songs table existence: ", err)
+		} else {
+			_, err = db.Exec("create table spotify_songs (\"index\" integer, name string, artist string)")
+
+			if err != nil {
+				log.Fatal("error creating table spotify_songs: ", err)
+			}
+
+			fmt.Println("created new table: spotify_songs")
+		}
+	}
+
+	// check if table is empty
+	query = "select count(*) from spotify_songs"
+	var count int
+	err = db.QueryRow(query).Scan(&count)
+
+	if err != nil {
+		log.Fatal("error checking if spotify_songs is empty: ", err)
+	}
+
+	if count == 0 {
+		fmt.Println("will fetch spotify songs")
+
+		tracks := fetchSpotifySongs()
+
+		fmt.Println("num of tracks retrieved: ", len(tracks))
+
+		_, err = db.NamedExec("insert into spotify_songs (name, artist, \"index\") values (:name, :artist, :index)", tracks)
 
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("error inserting tracks as batch: ", err)
 		}
 
-		for i := 0; i < len(userTracks.Tracks); i++ {
-			track := userTracks.Tracks[i]
-			fmt.Println(i+offset, track.Name, track.Artists[0].Name)
-			offset += 1
-		}
+		fmt.Printf("inserted %d tracks as batch\n", len(tracks))
+	} else {
+		fmt.Println("spotify_songs has contents. skipping fetching songs")
 	}
 }
