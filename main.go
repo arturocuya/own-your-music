@@ -96,6 +96,12 @@ func main() {
 
 	// TODO: parallelize somehow
 	for _, track := range tracks {
-		findSongInBandcampV1(&track)
+		// track := SpotifySong{
+		// 	Name:   "Blue Hair",
+		// 	Artist: "TV Girl",
+		// 	Album:  "Death of a Party Girl",
+		// 	Index:  1,
+		// }
+		findSongInBandcampV2(&track)
 	}
 }

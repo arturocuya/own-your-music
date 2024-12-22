@@ -12,7 +12,7 @@ import (
 // search for the song directly. find if title, artist and album matches.
 // matches: 163 / 1130
 func findSongInBandcampV1(track *SpotifySong) {
-	fmt.Printf("checking #%d: %s by %s from %s\n", track.Index, track.Name, track.Artist, track.Album)
+	fmt.Printf("v1: checking #%d: %s by %s from %s\n", track.Index, track.Name, track.Artist, track.Album)
 	c := colly.NewCollector(
 		colly.AllowedDomains("bandcamp.com"),
 	)
@@ -61,5 +61,84 @@ func findSongInBandcampV1(track *SpotifySong) {
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
 func findSongInBandcampV2(track *SpotifySong) {
-	// TODO
+	fmt.Printf("v2: checking #%d: %s by %s from %s\n", track.Index, track.Name, track.Artist, track.Album)
+	c := colly.NewCollector(
+		colly.AllowedDomains("bandcamp.com"),
+	)
+
+	c.OnHTML(".results", func(e *colly.HTMLElement) {
+		e.ForEachWithBreak(".searchresult", func(i int, h *colly.HTMLElement) bool {
+			itemType := h.ChildText(".result-info .itemtype")
+
+			if itemType != "ALBUM" {
+				return true
+			}
+
+			albumName := strings.ToLower(h.ChildText(".result-info .heading"))
+
+			if !strings.Contains(albumName, strings.ToLower(track.Album)) {
+				return true
+			}
+
+			subheading := strings.ToLower(h.ChildText(".result-info .subhead"))
+
+			// example subheading: "by Digitalism"
+			if !strings.Contains(subheading, strings.ToLower(track.Artist)) {
+				return true
+			}
+
+			albumUrl := h.ChildAttr(".result-info .heading a", "href")
+
+			findSongInAlbumPage(track, albumUrl)
+
+			return true
+		})
+	})
+
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+
+		if err.Error() == "Too Many Requests" {
+			time.Sleep(3 * time.Minute)
+		}
+	})
+
+	c.Visit(fmt.Sprintf(
+		"https://bandcamp.com/search?q=%s&item_type=a&from=results",
+		url.QueryEscape(track.Album),
+	))
+
+	c.Wait()
+}
+
+func findSongInAlbumPage(track *SpotifySong, albumPageUrl string) {
+	// TODO: return signal to break outer collector
+	c := colly.NewCollector()
+
+	c.OnHTML(".track_table", func(table *colly.HTMLElement) {
+		table.ForEachWithBreak(".track_row_view", func(_ int, trackRow *colly.HTMLElement) bool {
+			title := strings.ToLower(trackRow.ChildText(".track-title"))
+
+			if strings.Contains(title, strings.ToLower(track.Name)) {
+				path := trackRow.ChildAttr(".title a", "href")
+				fmt.Printf("\tMatch found! %s : %s\n", title, fmt.Sprintf("%s%s", getBaseURL(albumPageUrl), path))
+				return false
+			}
+
+			return true
+		})
+	})
+
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+
+		if err.Error() == "Too Many Requests" {
+			time.Sleep(3 * time.Minute)
+		}
+	})
+
+	c.Visit(albumPageUrl)
+
+	c.Wait()
+
 }
