@@ -60,6 +60,7 @@ func findSongInBandcampV1(track *SpotifySong) {
 }
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
+// matches: 266 / 1130
 func findSongInBandcampV2(track *SpotifySong) {
 	fmt.Printf("v2: checking #%d: %s by %s from %s\n", track.Index, track.Name, track.Artist, track.Album)
 	c := colly.NewCollector(
@@ -89,9 +90,11 @@ func findSongInBandcampV2(track *SpotifySong) {
 
 			albumUrl := h.ChildAttr(".result-info .heading a", "href")
 
-			findSongInAlbumPage(track, albumUrl)
+			ch := make(chan bool)
+			go findSongInAlbumPage(track, albumUrl, ch)
+			value := <-ch
 
-			return true
+			return value
 		})
 	})
 
@@ -111,9 +114,14 @@ func findSongInBandcampV2(track *SpotifySong) {
 	c.Wait()
 }
 
-func findSongInAlbumPage(track *SpotifySong, albumPageUrl string) {
-	// TODO: return signal to break outer collector
+func findSongInAlbumPage(track *SpotifySong, albumPageUrl string, returnCh chan bool) {
 	c := colly.NewCollector()
+	found := false
+
+	c.OnScraped(func(r *colly.Response) {
+		returnCh <- !found
+		close(returnCh)
+	})
 
 	c.OnHTML(".track_table", func(table *colly.HTMLElement) {
 		table.ForEachWithBreak(".track_row_view", func(_ int, trackRow *colly.HTMLElement) bool {
@@ -122,6 +130,7 @@ func findSongInAlbumPage(track *SpotifySong, albumPageUrl string) {
 			if strings.Contains(title, strings.ToLower(track.Name)) {
 				path := trackRow.ChildAttr(".title a", "href")
 				fmt.Printf("\tMatch found! %s : %s\n", title, fmt.Sprintf("%s%s", getBaseURL(albumPageUrl), path))
+				found = true
 				return false
 			}
 
@@ -133,12 +142,17 @@ func findSongInAlbumPage(track *SpotifySong, albumPageUrl string) {
 		fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
 
 		if err.Error() == "Too Many Requests" {
+			// TODO: not sure if it's ok to sleep in the coroutine
+			// but i guess it's ok as long as i don't send to the channel
+			// before the timer ends
 			time.Sleep(3 * time.Minute)
 		}
+
+		returnCh <- !found
+		close(returnCh)
 	})
 
 	c.Visit(albumPageUrl)
 
 	c.Wait()
-
 }
