@@ -34,16 +34,17 @@ func findSongInBandcamp(track *SpotifySong) *BandcampMatch {
 				return true
 			}
 
-			albumName := strings.ToLower(h.ChildText(".result-info .heading"))
+			albumName := h.ChildText(".result-info .heading")
 
-			if !strings.Contains(albumName, strings.ToLower(track.Album)) {
+			if !strings.Contains(sanitizeForComparison(albumName), sanitizeForComparison(track.Album)) {
+				fmt.Println("no album match")
 				return true
 			}
 
 			subheading := h.ChildText(".result-info .subhead")
 
 			// example subheading: "by Digitalism"
-			if !strings.Contains(strings.ToLower(subheading), strings.ToLower(track.Artist)) {
+			if !strings.Contains(sanitizeForComparison(subheading), sanitizeForComparison(track.Artist)) {
 				return true
 			}
 
@@ -97,7 +98,7 @@ func findSongInAlbumPage(track *SpotifySong, albumPageUrl string, matchChannel c
 		table.ForEachWithBreak(".track_row_view", func(_ int, trackRow *colly.HTMLElement) bool {
 			title := trackRow.ChildText(".track-title")
 
-			if strings.Contains(strings.ToLower(title), strings.ToLower(track.Name)) {
+			if strings.Contains(sanitizeForComparison(title), sanitizeForComparison(track.Name)) {
 				path := trackRow.ChildAttr(".title a", "href")
 				match = BandcampMatch{
 					Name:    title,

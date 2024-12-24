@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 // taken from https://gist.github.com/sevkin/9798d67b2cb9d07cb05f89f14ba682f8
@@ -29,4 +30,27 @@ func OpenUrlInBrowser(url string) error {
 func getBaseURL(inputURL string) string {
 	parsedURL, _ := url.Parse(inputURL)
 	return fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
+}
+
+func sanitizeForComparison(text string) string {
+	splitted := strings.Split(text, "")
+	for i, _char := range splitted {
+		char := _char[0]
+		// weird ascii ranges. reference: https://www.asciitable.com/
+		if (33 <= char && char <= 47) || (58 <= char && char <= 64) || (91 <= char && char <= 96) || (123 <= char && char <= 127) {
+			splitted[i] = " "
+		}
+
+		// other weird bytes
+		// fking half alive...
+		if _char == "•" || _char == "·" {
+			splitted[i] = " "
+		}
+	}
+
+	text = strings.Join(splitted, "")
+	text = strings.Trim(text, " \t")
+	text = strings.ToLower(text)
+
+	return text
 }
