@@ -10,12 +10,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type BandcampArtist struct {
-	Name     string
-	Location string
-	StoreUrl string
-}
-
 func main() {
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -102,6 +96,10 @@ func main() {
 		// 	Album:  "Death of a Party Girl",
 		// 	Index:  1,
 		// }
-		findSongInBandcampV2(&track)
+		match := findSongInBandcampV2(&track)
+
+		if match != nil {
+			fmt.Printf("Match found! %s / %s : %s\n", match.Name, match.Subheading, match.SongUrl)
+		}
 	}
 }

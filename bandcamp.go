@@ -9,6 +9,13 @@ import (
 	"github.com/gocolly/colly/v2"
 )
 
+type BandcampMatch struct {
+	Name       string
+	Subheading string
+	SongUrl    string
+	AlbumUrl   string
+}
+
 // search for the song directly. find if title, artist and album matches.
 // matches: 163 / 1130
 func findSongInBandcampV1(track *SpotifySong) {
@@ -61,11 +68,13 @@ func findSongInBandcampV1(track *SpotifySong) {
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
 // matches: 266 / 1130
-func findSongInBandcampV2(track *SpotifySong) {
+func findSongInBandcampV2(track *SpotifySong) *BandcampMatch {
 	fmt.Printf("v2: checking #%d: %s by %s from %s\n", track.Index, track.Name, track.Artist, track.Album)
 	c := colly.NewCollector(
 		colly.AllowedDomains("bandcamp.com"),
 	)
+
+	var match *BandcampMatch
 
 	c.OnHTML(".results", func(e *colly.HTMLElement) {
 		e.ForEachWithBreak(".searchresult", func(i int, h *colly.HTMLElement) bool {
@@ -81,20 +90,28 @@ func findSongInBandcampV2(track *SpotifySong) {
 				return true
 			}
 
-			subheading := strings.ToLower(h.ChildText(".result-info .subhead"))
+			subheading := h.ChildText(".result-info .subhead")
 
 			// example subheading: "by Digitalism"
-			if !strings.Contains(subheading, strings.ToLower(track.Artist)) {
+			if !strings.Contains(strings.ToLower(subheading), strings.ToLower(track.Artist)) {
 				return true
 			}
 
 			albumUrl := h.ChildAttr(".result-info .heading a", "href")
 
-			ch := make(chan bool)
-			go findSongInAlbumPage(track, albumUrl, ch)
-			value := <-ch
+			matchChannel := make(chan *BandcampMatch)
+			go findSongInAlbumPage(track, albumUrl, matchChannel)
+			match = <-matchChannel
 
-			return value
+			if match != nil {
+				match.Subheading = subheading
+				if strings.Contains(albumUrl, "?") {
+					albumUrl = strings.Split(albumUrl, "?")[0]
+				}
+				match.AlbumUrl = albumUrl
+			}
+
+			return match == nil
 		})
 	})
 
@@ -112,25 +129,30 @@ func findSongInBandcampV2(track *SpotifySong) {
 	))
 
 	c.Wait()
+
+	return match
 }
 
-func findSongInAlbumPage(track *SpotifySong, albumPageUrl string, returnCh chan bool) {
+func findSongInAlbumPage(track *SpotifySong, albumPageUrl string, matchChannel chan *BandcampMatch) {
 	c := colly.NewCollector()
-	found := false
+
+	var match BandcampMatch
 
 	c.OnScraped(func(r *colly.Response) {
-		returnCh <- !found
-		close(returnCh)
+		matchChannel <- &match
+		close(matchChannel)
 	})
 
 	c.OnHTML(".track_table", func(table *colly.HTMLElement) {
 		table.ForEachWithBreak(".track_row_view", func(_ int, trackRow *colly.HTMLElement) bool {
-			title := strings.ToLower(trackRow.ChildText(".track-title"))
+			title := trackRow.ChildText(".track-title")
 
-			if strings.Contains(title, strings.ToLower(track.Name)) {
+			if strings.Contains(strings.ToLower(title), strings.ToLower(track.Name)) {
 				path := trackRow.ChildAttr(".title a", "href")
-				fmt.Printf("\tMatch found! %s : %s\n", title, fmt.Sprintf("%s%s", getBaseURL(albumPageUrl), path))
-				found = true
+				match = BandcampMatch{
+					Name:    title,
+					SongUrl: fmt.Sprintf("%s%s", getBaseURL(albumPageUrl), path),
+				}
 				return false
 			}
 
@@ -148,8 +170,8 @@ func findSongInAlbumPage(track *SpotifySong, albumPageUrl string, returnCh chan 
 			time.Sleep(3 * time.Minute)
 		}
 
-		returnCh <- !found
-		close(returnCh)
+		matchChannel <- &match
+		close(matchChannel)
 	})
 
 	c.Visit(albumPageUrl)
