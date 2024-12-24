@@ -96,7 +96,7 @@ func main() {
 		// 	Album:  "Death of a Party Girl",
 		// 	Index:  1,
 		// }
-		match := findSongInBandcampV2(&track)
+		match := findSongInBandcamp(&track)
 
 		if match != nil {
 			fmt.Printf("Match found! %s / %s : %s\n", match.Name, match.Subheading, match.SongUrl)

@@ -18,7 +18,7 @@ type BandcampMatch struct {
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
 // matches: 266 / 1130
-func findSongInBandcampV2(track *SpotifySong) *BandcampMatch {
+func findSongInBandcamp(track *SpotifySong) *BandcampMatch {
 	fmt.Printf("v2: checking #%d: %s by %s from %s\n", track.Index, track.Name, track.Artist, track.Album)
 	c := colly.NewCollector(
 		colly.AllowedDomains("bandcamp.com"),

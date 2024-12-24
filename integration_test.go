@@ -13,7 +13,7 @@ func TestHappyPath(t *testing.T) {
 		Album:  "The English Riviera",
 	}
 
-	match := findSongInBandcampV2(&song)
+	match := findSongInBandcamp(&song)
 
 	if match == nil {
 		t.Fatalf("match not found for %+v\n", song)
