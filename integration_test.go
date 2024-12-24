@@ -38,3 +38,18 @@ func TestSpecialCharacters(t *testing.T) {
 
 	fmt.Printf("match found: %+v\n", match)
 }
+
+func TestFoo(t *testing.T) {
+	song := SpotifySong{
+		Index:  1,
+		Name:   "Not Like Us",
+		Artist: "Kendrick Lamar",
+		Album:  "Not Like Us",
+	}
+
+	match := findSongInBandcamp(&song)
+
+	if match != nil {
+		t.Fatal("found song that shouldn't exist in bandcamp", song.Name, "by", song.Artist)
+	}
+}
