@@ -17,7 +17,7 @@ type BandcampMatch struct {
 }
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
-// matches: 266 / 1130
+// matches: 271 / 1130
 func findSongInBandcamp(track *SpotifySong) *BandcampMatch {
 	fmt.Printf("v2: checking #%d: %s by %s from %s\n", track.Index, track.Name, track.Artist, track.Album)
 	c := colly.NewCollector(
@@ -54,7 +54,6 @@ func findSongInBandcamp(track *SpotifySong) *BandcampMatch {
 			match = <-matchChannel
 
 			if match != nil {
-				fmt.Println("found song", match)
 				match.Subheading = subheading
 				if strings.Contains(albumUrl, "?") {
 					albumUrl = strings.Split(albumUrl, "?")[0]

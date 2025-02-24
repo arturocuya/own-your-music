@@ -39,7 +39,7 @@ func TestSpecialCharacters(t *testing.T) {
 	fmt.Printf("match found: %+v\n", match)
 }
 
-func TestFoo(t *testing.T) {
+func TestSongThatShouldntExist(t *testing.T) {
 	song := SpotifySong{
 		Index:  1,
 		Name:   "Not Like Us",

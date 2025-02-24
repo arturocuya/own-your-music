@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+        <title>Own Your Music</title>
+        <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    </head>
+    <body>
+        <h1>Own Your Music</h1>
+        {{if .NeedsCredentials}}
+        <form hx-post="/update-spotify-credentials" hx-swap="none">
+            <div class="mb-4">
+                <label for="clientId"> Client ID </label>
+                <br />
+                <input type="text" id="clientId" name="clientId" required />
+            </div>
+            <div class="mb-6">
+                <label for="clientSecret"> Client Secret </label>
+                <br />
+                <div class="relative">
+                    <input
+                        type="password"
+                        id="clientSecret"
+                        name="clientSecret"
+                        required
+                    />
+                    <button type="button" onclick="togglePasswordVisibility">
+                        Show password
+                    </button>
+                </div>
+            </div>
+            <br />
+            <button type="submit">Update Credentials</button>
+        </form>
+
+        <script>
+            function togglePasswordVisibility() {
+                const clientSecretInput =
+                    document.getElementById("clientSecret");
+                const button = document.querySelector(
+                    'button[onclick="toggleClient SecretVisibility()"]',
+                );
+                if (clientSecretInput.type === "clientSecret") {
+                    clientSecretInput.type = "text";
+                    button.textContent = "Hide";
+                } else {
+                    clientSecretInput.type = "clientSecret";
+                    button.textContent = "Show";
+                }
+            }
+        </script>
+        {{end}}
+
+        <br />
+
+        {{if .AuthUrl}}
+        <a target="_blank" href="{{.AuthUrl}}">
+            <button>Authenticate with Spotify</button>
+        </a>
+        {{end}}
+
+        <ul>
+            {{if .Tracks}} {{range .Tracks}}
+            <li>{{.Name}} ({{.Album}}) -- {{.Artist}}</li>
+            {{end}} {{else}}
+            <p>Here would go my tracks, if I had some :(</p>
+            <button>Load tracks!</button>
+            {{end}}
+        </ul>
+    </body>
+</html>

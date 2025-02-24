@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/zmb3/spotify/v2"
@@ -18,12 +17,14 @@ type SpotifySong struct {
 	Index  int    `db:"index"`
 }
 
-func fetchSpotifySongs() []SpotifySong {
+const SPOTIFY_CALLBACK_URL = "http://localhost:8081/spotify-auth-callback"
+
+func fetchSpotifySongs(clientId string, clientSecret string) []SpotifySong {
 	auth := spotifyauth.New(
-		spotifyauth.WithRedirectURL("http://localhost:8080/callback"),
+		spotifyauth.WithRedirectURL(SPOTIFY_CALLBACK_URL),
 		spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate, spotifyauth.ScopeUserLibraryRead),
-		spotifyauth.WithClientID(os.Getenv("SPOTIFY_CLIENT_ID")),
-		spotifyauth.WithClientSecret(os.Getenv("SPOTIFY_CLIENT_SECRET")),
+		spotifyauth.WithClientID(clientId),
+		spotifyauth.WithClientSecret(clientSecret),
 	)
 
 	ch := make(chan *spotify.Client)
