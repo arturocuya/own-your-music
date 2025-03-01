@@ -21,6 +21,8 @@ func GetKeyValue(key string) (string, error) {
 		return "", openErr
 	}
 
+	defer db.Close()
+
 	var value string
 
 	queryErr := db.QueryRowx("select value from kvstore where key = ?", key).Scan(&value)
@@ -42,6 +44,8 @@ func SetKeyValue(key string, value string) error {
 		log.Errorf("Error opening db %+v", openErr)
 		return openErr
 	}
+
+	defer db.Close()
 
 	_, upsertErr := db.Exec("insert or replace into kvstore (key, value) values (?, ?)", key, value)
 

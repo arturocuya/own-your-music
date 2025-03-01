@@ -7,7 +7,7 @@ import (
 
 func TestHappyPath(t *testing.T) {
 	song := SpotifySong{
-		Index:  1,
+		Idx:  1,
 		Name:   "The Bay",
 		Artist: "Metronomy",
 		Album:  "The English Riviera",
@@ -24,7 +24,7 @@ func TestHappyPath(t *testing.T) {
 
 func TestSpecialCharacters(t *testing.T) {
 	song := SpotifySong{
-		Index:  1,
+		Idx:  1,
 		Name:   "still feel.",
 		Artist: "half•alive",
 		Album:  "Now, Not Yet",
@@ -41,7 +41,7 @@ func TestSpecialCharacters(t *testing.T) {
 
 func TestSongThatShouldntExist(t *testing.T) {
 	song := SpotifySong{
-		Index:  1,
+		Idx:  1,
 		Name:   "Not Like Us",
 		Artist: "Kendrick Lamar",
 		Album:  "Not Like Us",

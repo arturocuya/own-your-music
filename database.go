@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -9,4 +12,38 @@ const DB_PATH = "./database.sqlite"
 
 func OpenDatabase() (*sqlx.DB, error) {
 	return sqlx.Open("sqlite3", DB_PATH)
+}
+
+func SaveSpotifySongs(tracks []SpotifySong) {
+	db, err := OpenDatabase()
+
+	defer db.Close()
+
+	if err != nil {
+		log.Fatal("error opening database: ", err)
+	}
+
+	_, err = db.NamedExec("insert into spotify_songs (name, artist, \"idx\", album) values (:name, :artist, :idx, :album)", tracks)
+
+	if err != nil {
+		log.Fatal("error inserting tracks as batch: ", err)
+	}
+
+	fmt.Printf("inserted %d tracks as batch\n", len(tracks))
+}
+
+func ClearSpotifySongs() {
+	db, err := OpenDatabase()
+
+	defer db.Close()
+
+	if err != nil {
+		log.Fatal("error opening database: ", err)
+	}
+
+	_, err = db.Exec("delete from spotify_songs")
+
+	if err != nil {
+		log.Fatal("error inserting tracks as batch: ", err)
+	}
 }

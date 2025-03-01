@@ -26,31 +26,11 @@
                         name="clientSecret"
                         required
                     />
-                    <button type="button" onclick="togglePasswordVisibility">
-                        Show password
-                    </button>
                 </div>
             </div>
             <br />
             <button type="submit">Update Credentials</button>
         </form>
-
-        <script>
-            function togglePasswordVisibility() {
-                const clientSecretInput =
-                    document.getElementById("clientSecret");
-                const button = document.querySelector(
-                    'button[onclick="toggleClient SecretVisibility()"]',
-                );
-                if (clientSecretInput.type === "clientSecret") {
-                    clientSecretInput.type = "text";
-                    button.textContent = "Hide";
-                } else {
-                    clientSecretInput.type = "clientSecret";
-                    button.textContent = "Show";
-                }
-            }
-        </script>
         {{end}}
 
         <br />
@@ -60,14 +40,13 @@
             <button>Authenticate with Spotify</button>
         </a>
         {{end}} {{if .CanLoadSpotifySongs}}
-        <button hx-get="/load-spotify-songs">Load Spotify songs</button>
+        <button hx-get="/load-spotify-songs" hx-swap="none">Load Spotify songs</button>
         {{end}}
 
-        <ul id="spotify-songs" hx-ext="sse" sse-connect="/sse" sse-swap="message">
+        <ul id="spotify-songs" hx-ext="sse" sse-connect="/sse" sse-swap="message" hx-swap="beforeend">
             {{if .Tracks}} {{block "components/spotify-tracks" .Tracks}}{{end}}
             {{else}}
             <p>Here would go my tracks, if I had some :(</p>
-            <button hx-get="/load-spotify-songs" hx-swap="outerHTML">Load tracks!</button>
             {{end}}
         </ul>
     </body>
@@ -76,7 +55,7 @@
     <script src="/public/htmx-ext-sse.js"></script>
 
     <!-- uncomment to test sse -->
-    <script>
+    <!-- <script>
         document.body.addEventListener("htmx:sseBeforeMessage", function (e) {
             console.log("before message", e);
         });
@@ -95,14 +74,10 @@
 
         document.body.addEventListener("htmx:sseMessage", function (e) {
             console.log("message", e)
-            window.scrollTo({
-                top: document.body.scrollHeight,
-                behavior: "smooth"
-            })
         });
 
         document.body.addEventListener("htmx:sseClose", function (e) {
             console.log("close", e);
         });
-    </script>
+    </script> -->
 </html>

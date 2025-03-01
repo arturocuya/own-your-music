@@ -114,7 +114,7 @@ func serverSentEvents(c echo.Context) error {
 		case tracks := <-loadSpotifySongsChan:
 			tmpl, err := template.New("dynamic").Parse(`
 				{{range .}}
-					<p id="a-{{.Index}}">{{.Name}} ({{.Album}}) -- {{.Artist}}</p>
+					<p id="a-{{.Idx}}">{{.Name}} ({{.Album}}) -- {{.Artist}}</p>
 				{{end}}
 				`)
 			if err != nil {
@@ -152,27 +152,31 @@ func loadSpotifySongs(c echo.Context) error {
 
 	go func() {
 		client := spotify.New(auth.Client(c.Request().Context(), token))
-		var tracks []SpotifySong
 
-		// TODO: parallelize somehow
 		userTracks, err := client.CurrentUsersTracks(context.Background())
 
 		if err != nil {
 			log.Fatal("error getting current user tracks at offset 0: ", err)
 		}
 
-		for i := 0; i < len(userTracks.Tracks); i++ {
+		var tracks []SpotifySong
+
+		for i := range (len(userTracks.Tracks))	{
 			track := userTracks.Tracks[i]
 			tracks = append(tracks, SpotifySong{
 				Name:   track.Name,
 				Artist: track.Artists[0].Name,
 				Album:  track.Album.Name,
-				Index:  i + 1,
+				Idx:  i + 1,
 			})
 			fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+1, track.Name, track.Artists[0].Name)
 		}
 
 		loadSpotifySongsChan <- tracks
+
+		ClearSpotifySongs()
+
+		SaveSpotifySongs(tracks)
 
 		offset := len(userTracks.Tracks)
 
@@ -183,18 +187,21 @@ func loadSpotifySongs(c echo.Context) error {
 				log.Fatalf("error getting current user tracks at offset %d: %s", offset, err)
 			}
 
-			for i := 0; i < len(userTracks.Tracks); i++ {
+			tracks = tracks[:0]
+			for i := range (len(userTracks.Tracks))	{
 				track := userTracks.Tracks[i]
 				tracks = append(tracks, SpotifySong{
 					Name:   track.Name,
 					Artist: track.Artists[0].Name,
 					Album:  track.Album.Name,
-					Index:  i + offset + 1,
+					Idx:  i + offset + 1,
 				})
 				fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+offset+1, track.Name, track.Artists[0].Name)
 			}
 
 			loadSpotifySongsChan <- tracks
+
+			SaveSpotifySongs(tracks)
 
 			offset += len(userTracks.Tracks)
 		}
