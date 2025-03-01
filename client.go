@@ -23,9 +23,10 @@ func Homepage(c echo.Context) error {
 	defer db.Close()
 
 	var pageData struct {
-		NeedsCredentials bool
-		Tracks          []SpotifySong
-		AuthUrl         string
+		NeedsCredentials    bool
+		Tracks              []SpotifySong
+		AuthUrl             string
+		CanLoadSpotifySongs bool
 	}
 
 	err = db.Select(&pageData.Tracks, "select * from spotify_songs order by \"index\" asc")
@@ -47,13 +48,13 @@ func Homepage(c echo.Context) error {
 
 	pageData.NeedsCredentials = strings.TrimSpace(spotifyClientId) == "" || strings.TrimSpace(spotifyClientSecret) == ""
 
-	token, err := GetKeyValue(KEY_SPOTIFY_AUTH_TOKEN)
+	token, err := GetSpotifyToken()
 
 	if err != nil {
 		return c.String(http.StatusInternalServerError, fmt.Sprintf("error retrieving spotify auth token: %v", err))
 	}
 
-	if !pageData.NeedsCredentials && strings.TrimSpace(token) == "" {
+	if (!pageData.NeedsCredentials && token == nil) || (token != nil && !token.Valid()) {
 		auth := spotifyauth.New(
 			spotifyauth.WithRedirectURL(SPOTIFY_CALLBACK_URL),
 			spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate, spotifyauth.ScopeUserLibraryRead),
@@ -68,6 +69,8 @@ func Homepage(c echo.Context) error {
 		pageData.AuthUrl = auth.AuthURL(state)
 	}
 
-	tmpl := template.Must(template.ParseFiles("templates/index.html"))
+	pageData.CanLoadSpotifySongs = token != nil && token.Valid()
+
+	tmpl := template.Must(template.ParseFiles("templates/index.html", "templates/spotify-tracks.html"))
 	return tmpl.Execute(c.Response(), pageData)
 }

@@ -76,6 +76,10 @@ func GetSpotifyToken() (*oauth2.Token, error) {
 		return nil, err
 	}
 
+	if tokenJSON == "" {
+		return nil, nil
+	}
+
 	var token oauth2.Token
 	err = json.Unmarshal([]byte(tokenJSON), &token)
 	if err != nil {
