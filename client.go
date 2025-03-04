@@ -13,8 +13,8 @@ import (
 )
 
 type TrackAndMatch struct {
-	Track SpotifySong
-	Match BandcampMatch
+	Track InputTrack
+	Match PurchaseableTrack
 }
 
 func Homepage(c echo.Context) error {
@@ -34,7 +34,7 @@ func Homepage(c echo.Context) error {
 		CanFindSongs        bool
 	}
 
-	var tracks []SpotifySong
+	var tracks []InputTrack
 
 	err = db.Select(&tracks, "select * from spotify_songs order by \"idx\" asc")
 
@@ -47,7 +47,7 @@ func Homepage(c echo.Context) error {
 			TrackAndMatch{
 				Track: track,
 				// TODO: insert cached match
-				Match: BandcampMatch{},
+				Match: PurchaseableTrack{},
 			})
 	}
 

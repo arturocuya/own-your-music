@@ -14,8 +14,8 @@ import (
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
-var loadSpotifySongsChan = make(chan []SpotifySong)
-var foundSongChan = make(chan BandcampMatch)
+var loadSpotifySongsChan = make(chan []InputTrack)
+var foundSongChan = make(chan PurchaseableTrack)
 
 func startSpotifyCallbackServer(auth *spotifyauth.Authenticator, state string, ch chan *spotify.Client) {
 	e := echo.New()
@@ -126,7 +126,7 @@ func serverSentEvents(c echo.Context) error {
 				tracksAndMatches = append(tracksAndMatches, TrackAndMatch{
 					Track: track,
 					// TODO: insert cached match
-					Match: BandcampMatch{},
+					Match: PurchaseableTrack{},
 				})
 			}
 
@@ -199,11 +199,11 @@ func loadSpotifySongs(c echo.Context) error {
 			log.Fatal("error getting current user tracks at offset 0: ", err)
 		}
 
-		var tracks []SpotifySong
+		var tracks []InputTrack
 
 		for i := range len(userTracks.Tracks) {
 			track := userTracks.Tracks[i]
-			tracks = append(tracks, SpotifySong{
+			tracks = append(tracks, InputTrack{
 				Name:   track.Name,
 				Artist: track.Artists[0].Name,
 				Album:  track.Album.Name,
@@ -231,7 +231,7 @@ func loadSpotifySongs(c echo.Context) error {
 			tracks = tracks[:0]
 			for i := range len(userTracks.Tracks) {
 				track := userTracks.Tracks[i]
-				tracks = append(tracks, SpotifySong{
+				tracks = append(tracks, InputTrack{
 					Name:   track.Name,
 					Artist: track.Artists[0].Name,
 					Album:  track.Album.Name,
@@ -260,7 +260,7 @@ func findSongs(c echo.Context) error {
 
 	defer db.Close()
 
-	var tracks []SpotifySong
+	var tracks []InputTrack
 
 	err = db.Select(&tracks, "select * from spotify_songs order by \"idx\" asc")
 

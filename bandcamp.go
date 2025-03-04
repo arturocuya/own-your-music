@@ -9,7 +9,7 @@ import (
 	"github.com/gocolly/colly/v2"
 )
 
-type BandcampMatch struct {
+type PurchaseableTrack struct {
 	SongIdx    int
 	Name       string
 	Subheading string
@@ -19,13 +19,13 @@ type BandcampMatch struct {
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
 // matches: 271 / 1130
-func findSongInBandcamp(track *SpotifySong) *BandcampMatch {
+func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	fmt.Printf("v2: checking #%d: %s by %s from %s\n", track.Idx, track.Name, track.Artist, track.Album)
 	c := colly.NewCollector(
 		colly.AllowedDomains("bandcamp.com"),
 	)
 
-	var match *BandcampMatch
+	var match *PurchaseableTrack
 
 	c.OnHTML(".results", func(e *colly.HTMLElement) {
 		e.ForEachWithBreak(".searchresult", func(i int, h *colly.HTMLElement) bool {
@@ -50,7 +50,7 @@ func findSongInBandcamp(track *SpotifySong) *BandcampMatch {
 
 			albumUrl := h.ChildAttr(".result-info .heading a", "href")
 
-			matchChannel := make(chan *BandcampMatch)
+			matchChannel := make(chan *PurchaseableTrack)
 			go findSongInAlbumPage(track, albumUrl, matchChannel)
 			match = <-matchChannel
 
@@ -81,17 +81,17 @@ func findSongInBandcamp(track *SpotifySong) *BandcampMatch {
 
 	c.Wait()
 
-	if (match != nil) {
+	if match != nil {
 		match.SongIdx = track.Idx
 	}
 
 	return match
 }
 
-func findSongInAlbumPage(track *SpotifySong, albumPageUrl string, matchChannel chan *BandcampMatch) {
+func findSongInAlbumPage(track *InputTrack, albumPageUrl string, matchChannel chan *PurchaseableTrack) {
 	c := colly.NewCollector()
 
-	var match *BandcampMatch
+	var match *PurchaseableTrack
 
 	c.OnScraped(func(r *colly.Response) {
 		matchChannel <- match
@@ -104,7 +104,7 @@ func findSongInAlbumPage(track *SpotifySong, albumPageUrl string, matchChannel c
 
 			if strings.Contains(sanitizeForComparison(title), sanitizeForComparison(track.Name)) {
 				path := trackRow.ChildAttr(".title a", "href")
-				match = &BandcampMatch{
+				match = &PurchaseableTrack{
 					Name:    title,
 					SongUrl: fmt.Sprintf("%s%s", getBaseURL(albumPageUrl), path),
 				}

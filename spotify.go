@@ -4,7 +4,7 @@ import (
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
-type SpotifySong struct {
+type InputTrack struct {
 	Name   string `db:"name"`
 	Artist string `db:"artist"`
 	Album  string `db:"album"`

@@ -14,7 +14,7 @@ func OpenDatabase() (*sqlx.DB, error) {
 	return sqlx.Open("sqlite3", DB_PATH)
 }
 
-func SaveSpotifySongs(tracks []SpotifySong) {
+func SaveSpotifySongs(tracks []InputTrack) {
 	db, err := OpenDatabase()
 
 	defer db.Close()
