@@ -10,6 +10,7 @@ import (
 )
 
 type BandcampMatch struct {
+	SongIdx    int
 	Name       string
 	Subheading string
 	SongUrl    string
@@ -79,6 +80,10 @@ func findSongInBandcamp(track *SpotifySong) *BandcampMatch {
 	))
 
 	c.Wait()
+
+	if (match != nil) {
+		match.SongIdx = track.Idx
+	}
 
 	return match
 }

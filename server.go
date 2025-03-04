@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/zmb3/spotify/v2"
@@ -16,6 +15,7 @@ import (
 )
 
 var loadSpotifySongsChan = make(chan []SpotifySong)
+var foundSongChan = make(chan BandcampMatch)
 
 func startSpotifyCallbackServer(auth *spotifyauth.Authenticator, state string, ch chan *spotify.Client) {
 	e := echo.New()
@@ -103,26 +103,66 @@ func serverSentEvents(c echo.Context) error {
 	c.Response().Header().Set(echo.HeaderConnection, "keep-alive")
 
 	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
-
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
 	for {
 		select {
 		case <-c.Request().Context().Done():
 			return nil
 		case tracks := <-loadSpotifySongsChan:
-			tmpl, err := template.New("dynamic").Parse(`
-				{{range .}}
-					<p id="a-{{.Idx}}">{{.Name}} ({{.Album}}) -- {{.Artist}}</p>
-				{{end}}
-				`)
+			tmpl := template.Must(template.ParseFiles("templates/track.html", "templates/match-result.html"))
+
+			tmpl, err := tmpl.New("dynamic").Parse(`
+                {{range .}}
+                    {{template "components/source-track" .}}
+                {{end}}
+			`)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			var tracksAndMatches []TrackAndMatch
+
+			for _, track := range tracks {
+				tracksAndMatches = append(tracksAndMatches, TrackAndMatch{
+					Track: track,
+					// TODO: insert cached match
+					Match: BandcampMatch{},
+				})
+			}
+
+			var buf bytes.Buffer
+			tmpl.Execute(&buf, tracksAndMatches)
+
+			content := strings.ReplaceAll(buf.String(), "\n", "")
+			content = strings.ReplaceAll(content, "\t", "")
+
+			data := fmt.Sprintf("data: %v\n\n", content)
+
+			if _, err := c.Response().Write([]byte(data)); err != nil {
+				return err
+			}
+			c.Response().Flush()
+		case foundMatch := <-foundSongChan:
+
+			tmpl := template.Must(template.ParseFiles("templates/match-result.html"))
+
+			tmpl, err := tmpl.New("dynamic").Parse(`
+				<ul id="result-for-{{.SongIdx}}" hx-swap-oob="true">
+                    {{template "components/match-result" .}}
+                </ul>
+			`)
+
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			var buf bytes.Buffer
-			tmpl.Execute(&buf, tracks)
+			err = tmpl.Execute(&buf, foundMatch)
+
+			if err != nil {
+				fmt.Println("template error", err)
+				return err
+			}
 
 			content := strings.ReplaceAll(buf.String(), "\n", "")
 			content = strings.ReplaceAll(content, "\t", "")
@@ -161,19 +201,20 @@ func loadSpotifySongs(c echo.Context) error {
 
 		var tracks []SpotifySong
 
-		for i := range (len(userTracks.Tracks))	{
+		for i := range len(userTracks.Tracks) {
 			track := userTracks.Tracks[i]
 			tracks = append(tracks, SpotifySong{
 				Name:   track.Name,
 				Artist: track.Artists[0].Name,
 				Album:  track.Album.Name,
-				Idx:  i + 1,
+				Idx:    i + 1,
 			})
 			fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+1, track.Name, track.Artists[0].Name)
 		}
 
 		loadSpotifySongsChan <- tracks
 
+		// TODO: need to clear on client too
 		ClearSpotifySongs()
 
 		SaveSpotifySongs(tracks)
@@ -188,13 +229,13 @@ func loadSpotifySongs(c echo.Context) error {
 			}
 
 			tracks = tracks[:0]
-			for i := range (len(userTracks.Tracks))	{
+			for i := range len(userTracks.Tracks) {
 				track := userTracks.Tracks[i]
 				tracks = append(tracks, SpotifySong{
 					Name:   track.Name,
 					Artist: track.Artists[0].Name,
 					Album:  track.Album.Name,
-					Idx:  i + offset + 1,
+					Idx:    i + offset + 1,
 				})
 				fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+offset+1, track.Name, track.Artists[0].Name)
 			}
@@ -204,6 +245,36 @@ func loadSpotifySongs(c echo.Context) error {
 			SaveSpotifySongs(tracks)
 
 			offset += len(userTracks.Tracks)
+		}
+	}()
+
+	return c.NoContent(http.StatusOK)
+}
+
+func findSongs(c echo.Context) error {
+	db, err := OpenDatabase()
+
+	if err != nil {
+		log.Fatal("error opening database: ", err)
+	}
+
+	defer db.Close()
+
+	var tracks []SpotifySong
+
+	err = db.Select(&tracks, "select * from spotify_songs order by \"idx\" asc")
+
+	if err != nil {
+		return c.String(http.StatusInternalServerError, fmt.Sprintf("error fetching existing spotify songs: %v", err))
+	}
+
+	go func() {
+		for _, track := range tracks {
+			result := findSongInBandcamp(&track)
+
+			if (result != nil) {
+				foundSongChan <- *result
+			}
 		}
 	}()
 

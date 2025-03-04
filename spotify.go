@@ -1,12 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
-
-	"github.com/google/uuid"
-	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
@@ -14,7 +8,7 @@ type SpotifySong struct {
 	Name   string `db:"name"`
 	Artist string `db:"artist"`
 	Album  string `db:"album"`
-	Idx  int    `db:"idx"`
+	Idx    int    `db:"idx"`
 }
 
 const SPOTIFY_CALLBACK_URL = "http://localhost:8081/spotify-auth-callback"

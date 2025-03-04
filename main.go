@@ -63,6 +63,7 @@ func main() {
 	e.GET("/spotify-auth-callback", spotifyAuthCallback)
 	e.GET("/sse", serverSentEvents)
 	e.GET("/load-spotify-songs", loadSpotifySongs)
+	e.GET("/find-songs", findSongs)
 
 	e.Logger.Fatal(e.Start(":8081"))
 

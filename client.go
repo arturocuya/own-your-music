@@ -8,13 +8,17 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
+type TrackAndMatch struct {
+	Track SpotifySong
+	Match BandcampMatch
+}
+
 func Homepage(c echo.Context) error {
-	db, err := sqlx.Open("sqlite3", DB_PATH)
+	db, err := OpenDatabase()
 
 	if err != nil {
 		log.Fatal("error opening database: ", err)
@@ -24,15 +28,27 @@ func Homepage(c echo.Context) error {
 
 	var pageData struct {
 		NeedsCredentials    bool
-		Tracks              []SpotifySong
+		Tracks              []TrackAndMatch
 		AuthUrl             string
 		CanLoadSpotifySongs bool
+		CanFindSongs        bool
 	}
 
-	err = db.Select(&pageData.Tracks, "select * from spotify_songs order by \"idx\" asc")
+	var tracks []SpotifySong
+
+	err = db.Select(&tracks, "select * from spotify_songs order by \"idx\" asc")
 
 	if err != nil {
 		return c.String(http.StatusInternalServerError, fmt.Sprintf("error fetching existing spotify songs: %v", err))
+	}
+
+	for _, track := range tracks {
+		pageData.Tracks = append(pageData.Tracks,
+			TrackAndMatch{
+				Track: track,
+				// TODO: insert cached match
+				Match: BandcampMatch{},
+			})
 	}
 
 	// check if you need to onboard on spotify
@@ -71,6 +87,11 @@ func Homepage(c echo.Context) error {
 
 	pageData.CanLoadSpotifySongs = token != nil && token.Valid()
 
-	tmpl := template.Must(template.ParseFiles("templates/index.html", "templates/spotify-tracks.html"))
-	return tmpl.Execute(c.Response(), pageData)
+	pageData.CanFindSongs = !pageData.NeedsCredentials && len(pageData.Tracks) > 0
+
+	tmpl := template.Must(template.ParseFiles("templates/index.html", "templates/track.html", "templates/match-result.html"))
+
+	err = tmpl.Execute(c.Response(), pageData)
+
+	return err
 }
