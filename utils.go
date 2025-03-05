@@ -54,3 +54,14 @@ func sanitizeForComparison(text string) string {
 
 	return text
 }
+
+// removes any non-numeric or non-dot prefixes/suffixes
+func removeNonNumericPrefixSuffix(s string) string {
+    var result strings.Builder
+    for _, r := range s {
+        if (r >= '0' && r <= '9') || r == '.' {
+            result.WriteRune(r)
+        }
+    }
+    return result.String()
+}

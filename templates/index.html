@@ -9,6 +9,8 @@
     <body>
         <h1>Own Your Music</h1>
 
+        <div id="total-investment"></div>
+
         {{if .NeedsCredentials}}
         <form hx-post="/update-spotify-credentials" hx-swap="none">
             <div class="mb-4">

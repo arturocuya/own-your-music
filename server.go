@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Rhymond/go-money"
 	"github.com/labstack/echo/v4"
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
@@ -16,6 +17,8 @@ import (
 
 var loadSpotifySongsChan = make(chan []InputTrack)
 var foundSongChan = make(chan PurchaseableTrack)
+
+var totalInvestment = make(map[string]*money.Money)
 
 func startSpotifyCallbackServer(auth *spotifyauth.Authenticator, state string, ch chan *spotify.Client) {
 	e := echo.New()
@@ -146,18 +149,35 @@ func serverSentEvents(c echo.Context) error {
 
 			tmpl := template.Must(template.ParseFiles("templates/match-result.html"))
 
+			type PageData struct {
+				FoundMatch     PurchaseableTrack
+				InvestmentText string
+			}
+
 			tmpl, err := tmpl.New("dynamic").Parse(`
-				<ul id="result-for-{{.SongIdx}}" hx-swap-oob="true">
-                    {{template "components/match-result" .}}
+				<ul id="result-for-{{.FoundMatch.SongIdx}}" hx-swap-oob="true">
+                    {{template "components/match-result" .FoundMatch}}
                 </ul>
+                <div id="total-investment" hx-swap-oob="true">
+                	Total investment: {{.InvestmentText}}
+                </div>
 			`)
 
 			if err != nil {
 				log.Fatal(err)
 			}
 
+			var investment []string
+
+			for currency, money := range totalInvestment {
+				investment = append(investment, fmt.Sprintf("%s %s", currency, money.Display()))
+			}
+
 			var buf bytes.Buffer
-			err = tmpl.Execute(&buf, foundMatch)
+			err = tmpl.Execute(&buf, PageData{
+				FoundMatch:     foundMatch,
+				InvestmentText: strings.Join(investment, " + "),
+			})
 
 			if err != nil {
 				fmt.Println("template error", err)
@@ -272,7 +292,23 @@ func findSongs(c echo.Context) error {
 		for _, track := range tracks {
 			result := findSongInBandcamp(&track)
 
-			if (result != nil) {
+			if result != nil {
+				if result.Price != nil {
+					currencyCode := result.Price.Currency().Code
+					if _, exists := totalInvestment[currencyCode]; !exists {
+						totalInvestment[currencyCode] = result.Price
+					} else {
+						existingPrice, _ := totalInvestment[currencyCode]
+						moMoney, _ := existingPrice.Add(result.Price)
+						totalInvestment[currencyCode] = moMoney
+					}
+
+					fmt.Println("updated prices")
+					for key, value := range totalInvestment {
+						fmt.Printf("%v: %v\n", key, value.Display())
+					}
+				}
+
 				foundSongChan <- *result
 			}
 		}
