@@ -17,6 +17,7 @@ import (
 
 var loadSpotifySongsChan = make(chan []InputTrack)
 var foundSongChan = make(chan PurchaseableTrack)
+var flushCompleteChan = make(chan struct{})
 
 var totalInvestment = make(map[string]*money.Money)
 
@@ -145,43 +146,67 @@ func serverSentEvents(c echo.Context) error {
 				return err
 			}
 			c.Response().Flush()
-		case foundMatch := <-foundSongChan:
 
-			tmpl := template.Must(template.ParseFiles("templates/match-result.html"))
+			flushCompleteChan <- struct{}{}
+		case foundMatch := <-foundSongChan:
+			var buf bytes.Buffer
 
 			type PageData struct {
 				FoundMatch     PurchaseableTrack
 				InvestmentText string
 			}
 
-			tmpl, err := tmpl.New("dynamic").Parse(`
-				<ul id="result-for-{{.FoundMatch.SongIdx}}" hx-swap-oob="true">
-                    {{template "components/match-result" .FoundMatch}}
-                </ul>
-                <div id="total-investment" hx-swap-oob="true">
-                	Total investment: {{.InvestmentText}}
-                </div>
-			`)
+			if foundMatch.SongUrl == "" {
+				tmpl, err := template.New("dynamic").Parse(`
+					<ul id="result-for-{{.FoundMatch.SongIdx}}" hx-swap-oob="true">
+						<li>No match found :( </li>
+	                </ul>
+				`)
 
-			if err != nil {
-				log.Fatal(err)
-			}
+				if err != nil {
+					log.Fatal(err)
+				}
 
-			var investment []string
+				err = tmpl.Execute(&buf, PageData{
+					FoundMatch: foundMatch,
+				})
 
-			for currency, money := range totalInvestment {
-				investment = append(investment, fmt.Sprintf("%s %s", currency, money.Display()))
-			}
+				if err != nil {
+					fmt.Println("template error", err)
+					return err
+				}
 
-			var buf bytes.Buffer
-			err = tmpl.Execute(&buf, PageData{
-				FoundMatch:     foundMatch,
-				InvestmentText: strings.Join(investment, " + "),
-			})
+			} else {
+				tmpl := template.Must(template.ParseFiles("templates/match-result.html"))
 
-			if err != nil {
-				fmt.Println("template error", err)
-				return err
+				tmpl, err := tmpl.New("dynamic").Parse(`
+					<ul id="result-for-{{.FoundMatch.SongIdx}}" hx-swap-oob="true">
+	                    {{template "components/match-result" .FoundMatch}}
+	                </ul>
+	                <div id="total-investment" hx-swap-oob="true">
+	                	Total investment: {{.InvestmentText}}
+	                </div>
+				`)
+
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				var investment []string
+
+				for currency, money := range totalInvestment {
+					investment = append(investment, fmt.Sprintf("%s %s", currency, money.Display()))
+				}
+
+				err = tmpl.Execute(&buf, PageData{
+					FoundMatch:     foundMatch,
+					InvestmentText: strings.Join(investment, " + "),
+				})
+
+				if err != nil {
+					fmt.Println("template error", err)
+					return err
+				}
 			}
 
 			content := strings.ReplaceAll(buf.String(), "\n", "")
@@ -189,10 +214,13 @@ func serverSentEvents(c echo.Context) error {
 
 			data := fmt.Sprintf("data: %v\n\n", content)
 
+			fmt.Println(data)
+
 			if _, err := c.Response().Write([]byte(data)); err != nil {
 				return err
 			}
 			c.Response().Flush()
+			flushCompleteChan <- struct{}{}
 		}
 	}
 }
@@ -308,9 +336,18 @@ func findSongs(c echo.Context) error {
 						fmt.Printf("%v: %v\n", key, value.Display())
 					}
 				}
-
 				foundSongChan <- *result
+			} else {
+				fmt.Println("no match found for idx", track.Idx)
+				foundSongChan <- PurchaseableTrack{
+					SongIdx: track.Idx,
+					SongUrl: "",
+				}
 			}
+
+			// wait for SSE to flush message to client before attempting to fetch another value
+			// otherwise multiple writes can happen to the same response before flushing it, which will corrupt it
+			<-flushCompleteChan
 		}
 	}()
 
