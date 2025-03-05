@@ -7,12 +7,12 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/Rhymond/go-money"
 	"github.com/labstack/echo/v4"
 	"github.com/zmb3/spotify/v2"
-	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
 var loadSpotifySongsChan = make(chan []InputTrack)
@@ -20,36 +20,6 @@ var foundSongChan = make(chan PurchaseableTrack)
 var flushCompleteChan = make(chan struct{})
 
 var totalInvestment = make(map[string]*money.Money)
-
-func startSpotifyCallbackServer(auth *spotifyauth.Authenticator, state string, ch chan *spotify.Client) {
-	e := echo.New()
-	e.HideBanner = true
-
-	e.GET("/callback", func(c echo.Context) error {
-		token, err := auth.Token(c.Request().Context(), state, c.Request())
-
-		if err != nil {
-			return c.String(http.StatusForbidden, "could not get token")
-		}
-
-		if receivedState := c.FormValue("state"); receivedState != state {
-			log.Fatalf("state mismatch: %s != %s", receivedState, state)
-			return c.String(http.StatusNotFound, "state mismatch")
-		}
-
-		client := spotify.New(auth.Client(c.Request().Context(), token))
-
-		fmt.Println("login completed!")
-
-		ch <- client
-
-		return c.String(http.StatusOK, "spotify auth completed. you may close this page now.")
-	})
-
-	go func() {
-		e.Logger.Fatal(e.Start(":8080"))
-	}()
-}
 
 func updateSpotifyCredentials(c echo.Context) error {
 	clientId := c.FormValue("clientId")
@@ -192,15 +162,31 @@ func serverSentEvents(c echo.Context) error {
 					log.Fatal(err)
 				}
 
-				var investment []string
+				type investmentEntry struct {
+					currency string
+					value    *money.Money
+				}
 
+				var investments []investmentEntry
 				for currency, money := range totalInvestment {
-					investment = append(investment, fmt.Sprintf("%s %s", currency, money.Display()))
+					investments = append(investments, investmentEntry{
+						currency: currency,
+						value:    money,
+					})
+				}
+
+				sort.Slice(investments, func(i, j int) bool {
+					return investments[i].value.Amount() > investments[j].value.Amount()
+				})
+
+				var investmentTexts []string
+				for _, entry := range investments {
+					investmentTexts = append(investmentTexts, fmt.Sprintf("%s %s", entry.currency, entry.value.Display()))
 				}
 
 				err = tmpl.Execute(&buf, PageData{
 					FoundMatch:     foundMatch,
-					InvestmentText: strings.Join(investment, " + "),
+					InvestmentText: strings.Join(investmentTexts, " + "),
 				})
 
 				if err != nil {
@@ -213,8 +199,6 @@ func serverSentEvents(c echo.Context) error {
 			content = strings.ReplaceAll(content, "\t", "")
 
 			data := fmt.Sprintf("data: %v\n\n", content)
-
-			fmt.Println(data)
 
 			if _, err := c.Response().Write([]byte(data)); err != nil {
 				return err
@@ -326,7 +310,7 @@ func findSongs(c echo.Context) error {
 					if _, exists := totalInvestment[currencyCode]; !exists {
 						totalInvestment[currencyCode] = result.Price
 					} else {
-						existingPrice, _ := totalInvestment[currencyCode]
+						existingPrice := totalInvestment[currencyCode]
 						moMoney, _ := existingPrice.Add(result.Price)
 						totalInvestment[currencyCode] = moMoney
 					}

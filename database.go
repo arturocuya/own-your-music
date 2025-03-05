@@ -17,11 +17,11 @@ func OpenDatabase() (*sqlx.DB, error) {
 func SaveSpotifySongs(tracks []InputTrack) {
 	db, err := OpenDatabase()
 
-	defer db.Close()
-
 	if err != nil {
 		log.Fatal("error opening database: ", err)
 	}
+
+	defer db.Close()
 
 	_, err = db.NamedExec("insert into spotify_songs (name, artist, \"idx\", album) values (:name, :artist, :idx, :album)", tracks)
 
@@ -35,11 +35,11 @@ func SaveSpotifySongs(tracks []InputTrack) {
 func ClearSpotifySongs() {
 	db, err := OpenDatabase()
 
-	defer db.Close()
-
 	if err != nil {
 		log.Fatal("error opening database: ", err)
 	}
+
+	defer db.Close()
 
 	_, err = db.Exec("delete from spotify_songs")
 

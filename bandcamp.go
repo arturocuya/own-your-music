@@ -72,11 +72,13 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	})
 
 	searchCollector.OnError(func(r *colly.Response, err error) {
-		fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+		if r != nil && r.Headers != nil {
+			fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+		}
 
 		if err.Error() == "Too Many Requests" {
 			// TODO: retry same song after this
-			time.Sleep(3 * time.Minute)
+			time.Sleep(30 * time.Second)
 		}
 	})
 
@@ -126,10 +128,12 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	})
 
 	detailsCollector.OnError(func(r *colly.Response, err error) {
-		fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+		if r != nil && r.Headers != nil {
+			fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+		}
 
 		if err.Error() == "Too Many Requests" {
-			time.Sleep(3 * time.Minute)
+			time.Sleep(30 * time.Second)
 		}
 	})
 
@@ -168,13 +172,15 @@ func findSongInAlbumPage(track *InputTrack, albumPageUrl string, matchChannel ch
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
-		fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+		if r != nil && r.Headers != nil {
+			fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+		}
 
 		if err.Error() == "Too Many Requests" {
 			// TODO: not sure if it's ok to sleep in the coroutine
 			// but i guess it's ok as long as i don't send to the channel
 			// before the timer ends
-			time.Sleep(3 * time.Minute)
+			time.Sleep(30 * time.Second)
 		}
 
 		matchChannel <- match
