@@ -41,7 +41,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 
 			albumName := h.ChildText(".result-info .heading")
 
-			if !strings.Contains(sanitizeForComparison(albumName), sanitizeForComparison(track.Album)) {
+			if !musicItemEquals(track.Album, albumName) {
 				return true
 			}
 
@@ -81,7 +81,15 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 		albumCollector.OnHTML("#bio-container", func(e *colly.HTMLElement) {
 			artistName := e.ChildText("#band-name-location > span:nth-child(1)")
 
-			if sanitizeForComparison(artistName) == sanitizeForComparison(track.Artist) {
+			isMatch := false
+
+			if containsEastAsianCharacters(track.Artist) {
+				isMatch = musicItemEquals(track.Artist, artistName)
+			} else {
+				isMatch = sanitizeForComparison(track.Artist) == sanitizeForComparison(artistName)
+			}
+
+			if isMatch {
 				fmt.Println("found album match", albumUrl)
 				albumMatch = albumUrl
 			} else {
@@ -117,7 +125,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 
 				songName := h.ChildText(".result-info .heading")
 
-				if !strings.Contains(sanitizeForComparison(songName), sanitizeForComparison(track.Name)) {
+				if !musicItemEquals(track.Name, songName) {
 					return true
 				}
 
@@ -157,9 +165,16 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 			searchCollector.OnHTML("#bio-container", func(e *colly.HTMLElement) {
 				artistName := e.ChildText("#band-name-location > span:nth-child(1)")
 
-				if sanitizeForComparison(artistName) == sanitizeForComparison(track.Artist) {
+				isMatch := false
+
+				if containsEastAsianCharacters(track.Artist) {
+					isMatch = musicItemEquals(track.Artist, artistName)
+				} else {
+					isMatch = sanitizeForComparison(track.Artist) == sanitizeForComparison(artistName)
+				}
+
+				if isMatch {
 					songName := e.ChildText("h2.trackTitle")
-					fmt.Println("found track match", url)
 					match = &PurchaseableTrack{
 						Name:    songName,
 						SongUrl: strings.Split(url, "?")[0],
@@ -182,6 +197,8 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	}
 
 	match.SongIdx = track.Idx
+
+	fmt.Printf("found track match: '%s' at url %s \n", match.Name, match.SongUrl)
 
 	// now let's find the song details like price
 
@@ -232,7 +249,7 @@ func findSongInAlbumPage(track *InputTrack, albumPageUrl string) *PurchaseableTr
 		table.ForEachWithBreak(".track_row_view", func(_ int, trackRow *colly.HTMLElement) bool {
 			title := trackRow.ChildText(".track-title")
 
-			if strings.Contains(sanitizeForComparison(title), sanitizeForComparison(track.Name)) {
+			if musicItemEquals(track.Name, title) {
 				path := trackRow.ChildAttr(".title a", "href")
 				match = &PurchaseableTrack{
 					Name:    title,

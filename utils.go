@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"unicode"
 )
 
 // taken from https://gist.github.com/sevkin/9798d67b2cb9d07cb05f89f14ba682f8
@@ -57,11 +58,71 @@ func sanitizeForComparison(text string) string {
 
 // removes any non-numeric or non-dot prefixes/suffixes
 func removeNonNumericPrefixSuffix(s string) string {
-    var result strings.Builder
-    for _, r := range s {
-        if (r >= '0' && r <= '9') || r == '.' {
-            result.WriteRune(r)
-        }
-    }
-    return result.String()
+	var result strings.Builder
+	for _, r := range s {
+		if (r >= '0' && r <= '9') || r == '.' {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
+}
+
+func containsEastAsianCharacters(s string) bool {
+	for _, r := range s {
+		// Hiragana and Katakana for Japanese,
+		// Han for Chinese (and Japanese Kanji / Korean Hanja),
+		// Hangul for Korean.
+		if unicode.In(r, unicode.Hiragana, unicode.Katakana, unicode.Han, unicode.Hangul) {
+			return true
+		}
+	}
+	return false
+}
+
+func levenshteinDistance(a, b string) int {
+	m := len(a)
+	n := len(b)
+
+	// Create a 2D slice to hold the distances.
+	dp := make([][]int, m+1)
+	for i := range dp {
+		dp[i] = make([]int, n+1)
+	}
+
+	// Initialize the base cases.
+	for i := 0; i <= m; i++ {
+		dp[i][0] = i
+	}
+	for j := 0; j <= n; j++ {
+		dp[0][j] = j
+	}
+
+	// Compute the distances.
+	for i := 1; i <= m; i++ {
+		for j := 1; j <= n; j++ {
+			cost := 0
+			if a[i-1] != b[j-1] {
+				cost = 1
+			}
+			dp[i][j] = min(
+				dp[i-1][j]+1,      // deletion
+				dp[i][j-1]+1,      // insertion
+				dp[i-1][j-1]+cost, // substitution
+			)
+		}
+	}
+
+	return dp[m][n]
+}
+
+// useful for comparing track, album or artist names vs. what's found on the scraped website
+func musicItemEquals(target string, maybe string) bool {
+	if containsEastAsianCharacters(target) {
+		lDistance := levenshteinDistance(target, maybe)
+		fmt.Println("for", target, "vs", maybe, "distance is:", lDistance, "and ratio is:", float64(lDistance) / float64(len(target)))
+		// tested 0.35 for japanese characters, not sure about other east asian langs
+		return float64(lDistance) / float64(len(target)) <= 0.35
+	} else {
+		return strings.Contains(sanitizeForComparison(maybe), sanitizeForComparison(target))
+	}
 }

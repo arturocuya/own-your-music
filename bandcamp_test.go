@@ -136,3 +136,19 @@ func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
 		t.Fatalf("this song should not exist, but match was found: %+v", match)
 	}
 }
+
+func TestFindJapaneseSong(t *testing.T) {
+	song := InputTrack{
+		Idx: 1,
+		Name: "愛のせいで",
+		Artist: "ZOMBIE-CHANG",
+		Album: "PETIT PETIT PETIT",
+	}
+	match := findSongInBandcamp(&song)
+
+	if (match == nil) {
+		t.Fatalf("this song by zombie chang should exist!")
+	}
+}
+
+// TODO: what about "Y Dime" vs "Y ... Dime" from Ms Nina?
