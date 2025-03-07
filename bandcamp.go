@@ -23,14 +23,13 @@ type PurchaseableTrack struct {
 }
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
-// matches: 271 / 1130
 func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	fmt.Printf("checking #%d: %s by %s from %s\n", track.Idx, track.Name, track.Artist, track.Album)
-	searchCollector := colly.NewCollector(
-		colly.AllowedDomains("bandcamp.com"),
-	)
+	searchCollector := getNewBandcampCollector()
 
 	var match *PurchaseableTrack
+
+	var possibleAlbumMatches []string
 
 	searchCollector.OnHTML(".results", func(e *colly.HTMLElement) {
 		e.ForEachWithBreak(".searchresult", func(i int, h *colly.HTMLElement) bool {
@@ -55,31 +54,10 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 
 			albumUrl := h.ChildAttr(".result-info .heading a", "href")
 
-			matchChannel := make(chan *PurchaseableTrack)
-			go findSongInAlbumPage(track, albumUrl, matchChannel)
-			match = <-matchChannel
+			possibleAlbumMatches = append(possibleAlbumMatches, strings.Split(albumUrl, "?")[0])
 
-			if match != nil {
-				match.Subheading = subheading
-				if strings.Contains(albumUrl, "?") {
-					albumUrl = strings.Split(albumUrl, "?")[0]
-				}
-				match.AlbumUrl = albumUrl
-			}
-
-			return match == nil
+			return true
 		})
-	})
-
-	searchCollector.OnError(func(r *colly.Response, err error) {
-		if r != nil && r.Headers != nil {
-			fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
-		}
-
-		if err.Error() == "Too Many Requests" {
-			// TODO: retry same song after this
-			time.Sleep(30 * time.Second)
-		}
 	})
 
 	searchCollector.Visit(fmt.Sprintf(
@@ -89,20 +67,131 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 
 	searchCollector.Wait()
 
+	// visit each album page to confirm artist
+
+	albumMatch := ""
+
+	fmt.Printf("searching in %d possible album matches\n", len(possibleAlbumMatches))
+
+	for _, albumUrl := range possibleAlbumMatches {
+		fmt.Println("trying possible album match", albumUrl)
+
+		albumCollector := getNewBandcampCollector()
+
+		albumCollector.OnHTML("#bio-container", func(e *colly.HTMLElement) {
+			artistName := e.ChildText("#band-name-location > span:nth-child(1)")
+
+			if sanitizeForComparison(artistName) == sanitizeForComparison(track.Artist) {
+				fmt.Println("found album match", albumUrl)
+				albumMatch = albumUrl
+			} else {
+				fmt.Printf("album artist '%s' did not match '%s'\n", artistName, track.Artist)
+			}
+		})
+
+		albumCollector.Visit(albumUrl)
+		albumCollector.Wait()
+
+		if albumMatch != "" {
+			break
+		}
+	}
+
+	if albumMatch != "" {
+		match = findSongInAlbumPage(track, albumMatch)
+	}
+
+	if match == nil {
+		fmt.Println("could not find song by album. will try to find by track...")
+
+		var possibleTrackMatches []string
+
+		// song could not be found by album. find it by track name
+		searchCollector.OnHTML(".results", func(e *colly.HTMLElement) {
+			e.ForEachWithBreak(".searchresult", func(i int, h *colly.HTMLElement) bool {
+				itemType := h.ChildText(".result-info .itemtype")
+
+				if itemType != "TRACK" {
+					return true
+				}
+
+				songName := h.ChildText(".result-info .heading")
+
+				if !strings.Contains(sanitizeForComparison(songName), sanitizeForComparison(track.Name)) {
+					return true
+				}
+
+				// TODO: make this configurable
+				alternativeKeywords := []string{"remix", "clean]", "clean)", "edit]", "edit)", "mashup"}
+
+				for _, altKeyword := range alternativeKeywords {
+					if !strings.Contains(songName, altKeyword) && strings.Contains(sanitizeForComparison(songName), sanitizeForComparison(altKeyword)) {
+						return true
+					}
+				}
+
+				subheading := strings.ToLower(h.ChildText(".result-info .subhead"))
+
+				if strings.Contains(sanitizeForComparison(subheading), sanitizeForComparison(track.Artist)) {
+					songUrl := h.ChildText(".result-info .itemurl")
+					possibleTrackMatches = append(possibleTrackMatches, strings.Split(songUrl, "?")[0])
+
+					return false
+				} else {
+					return true
+				}
+			})
+		})
+
+		searchCollector.Visit(fmt.Sprintf(
+			"https://bandcamp.com/search?q=%s&item_type=t&from=results",
+			url.QueryEscape(track.Name),
+		))
+
+		searchCollector.Wait()
+
+		fmt.Printf("searching %d possible track matches\n", len(possibleTrackMatches))
+
+		for _, url := range possibleTrackMatches {
+			fmt.Println("trying possible track match", url)
+			searchCollector.OnHTML("#bio-container", func(e *colly.HTMLElement) {
+				artistName := e.ChildText("#band-name-location > span:nth-child(1)")
+
+				if sanitizeForComparison(artistName) == sanitizeForComparison(track.Artist) {
+					songName := e.ChildText("h2.trackTitle")
+					fmt.Println("found track match", url)
+					match = &PurchaseableTrack{
+						Name:    songName,
+						SongUrl: strings.Split(url, "?")[0],
+					}
+				} else {
+					fmt.Printf("track artist '%s' did not match '%s'\n", artistName, track.Artist)
+				}
+			})
+			searchCollector.Visit(url)
+			searchCollector.Wait()
+
+			if match != nil {
+				break
+			}
+		}
+	}
+
 	if match == nil {
 		return nil
 	}
 
 	match.SongIdx = track.Idx
 
-	detailsCollector := colly.NewCollector()
+	// now let's find the song details like price
+
+	detailsCollector := getNewBandcampCollector()
 
 	detailsCollector.OnHTML(".buyItem.digital", func(e *colly.HTMLElement) {
-		priceText := e.ChildText(".ft:nth-child(1) > span:nth-child(2) > span:nth-child(1)")
+		priceText := e.ChildText("li.buyItem.digital > .ft > .ft.main-button > span > span.base-text-color")
 
 		fmt.Printf("price found: '%v'\n", priceText)
 
-		//span.buyItemNyp:nth-child(2)
 		if priceText != "" {
 			currencyText := e.ChildText(".ft:nth-child(1) > span:nth-child(2) > span:nth-child(2)")
 
@@ -127,16 +216,6 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 		}
 	})
 
-	detailsCollector.OnError(func(r *colly.Response, err error) {
-		if r != nil && r.Headers != nil {
-			fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
-		}
-
-		if err.Error() == "Too Many Requests" {
-			time.Sleep(30 * time.Second)
-		}
-	})
-
 	fmt.Println("will search for price...")
 	detailsCollector.Visit(match.SongUrl)
 	detailsCollector.Wait()
@@ -144,15 +223,10 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	return match
 }
 
-func findSongInAlbumPage(track *InputTrack, albumPageUrl string, matchChannel chan *PurchaseableTrack) {
-	c := colly.NewCollector()
+func findSongInAlbumPage(track *InputTrack, albumPageUrl string) *PurchaseableTrack {
+	c := getNewBandcampCollector()
 
 	var match *PurchaseableTrack
-
-	c.OnScraped(func(r *colly.Response) {
-		matchChannel <- match
-		close(matchChannel)
-	})
 
 	c.OnHTML(".track_table", func(table *colly.HTMLElement) {
 		table.ForEachWithBreak(".track_row_view", func(_ int, trackRow *colly.HTMLElement) bool {
@@ -171,25 +245,11 @@ func findSongInAlbumPage(track *InputTrack, albumPageUrl string, matchChannel ch
 		})
 	})
 
-	c.OnError(func(r *colly.Response, err error) {
-		if r != nil && r.Headers != nil {
-			fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
-		}
-
-		if err.Error() == "Too Many Requests" {
-			// TODO: not sure if it's ok to sleep in the coroutine
-			// but i guess it's ok as long as i don't send to the channel
-			// before the timer ends
-			time.Sleep(30 * time.Second)
-		}
-
-		matchChannel <- match
-		close(matchChannel)
-	})
-
 	c.Visit(albumPageUrl)
 
 	c.Wait()
+
+	return match
 }
 
 // reference: https://get.bandcamp.help/hc/en-us/articles/23020726236823-Which-currencies-does-Bandcamp-support
@@ -222,4 +282,23 @@ func parseBandcampPrice(rawPrice string, currencyCode string) (*money.Money, err
 	}
 
 	return money.New(amount, currencyCode), nil
+}
+
+func getNewBandcampCollector() *colly.Collector {
+	c := colly.NewCollector()
+
+	c.OnError(func(r *colly.Response, err error) {
+		if r != nil && r.Headers != nil {
+			fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+		}
+
+		if err.Error() == "Too Many Requests" {
+			// TODO: not sure if it's ok to sleep in the coroutine
+			// but i guess it's ok as long as i don't send to the channel
+			// before the timer ends
+			time.Sleep(30 * time.Second)
+		}
+	})
+
+	return c
 }

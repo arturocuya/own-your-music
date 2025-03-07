@@ -76,7 +76,7 @@ func TestSongThatShouldntExist(t *testing.T) {
 	match := findSongInBandcamp(&song)
 
 	if match != nil {
-		t.Fatal("found song that shouldn't exist in bandcamp", song.Name, "by", song.Artist)
+		t.Fatalf("found song that shouldn't exist in bandcamp: %+v", match)
 	}
 }
 
@@ -90,10 +90,16 @@ func TestSongWithForeignPriceAndNoAlbum(t *testing.T) {
 
 	match := findSongInBandcamp(&song)
 
-	// TODO: expect price in DKK
-
 	if match == nil {
 		t.Fatal("could not find song")
+	}
+
+	if match.Price == nil {
+		t.Fatal("price is nil")
+	}
+
+	if match.Price.Currency().Code != money.DKK {
+		t.Fatal("unexpected price currency")
 	}
 }
 
@@ -113,5 +119,20 @@ func TestFreeNameYourPriceSong(t *testing.T) {
 
 	if equals, _ := match.Price.Equals(money.New(0, money.USD)); !equals {
 		t.Fatal("free song price is not USD 0")
+	}
+}
+
+func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
+	song := InputTrack{
+		Idx:    1,
+		Name:   "reincarnated",
+		Artist: "Kendrick Lamar",
+		Album:  "GNX",
+	}
+
+	match := findSongInBandcamp(&song)
+
+	if (match != nil) {
+		t.Fatalf("this song should not exist, but match was found: %+v", match)
 	}
 }
