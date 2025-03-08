@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/Rhymond/go-money"
@@ -44,8 +43,6 @@ func TestHappyPath(t *testing.T) {
 	if !priceEql {
 		t.Fatalf("price \"%v\" does not match \"%v\"\n", match.Price, oneEuro)
 	}
-
-	fmt.Printf("match found: %+v\n", match)
 }
 
 func TestSpecialCharacters(t *testing.T) {
@@ -61,8 +58,6 @@ func TestSpecialCharacters(t *testing.T) {
 	if match == nil {
 		t.Fatalf("match not found for %+v\n", song)
 	}
-
-	fmt.Printf("match found: %+v\n", match)
 }
 
 func TestSongThatShouldntExist(t *testing.T) {
@@ -132,21 +127,21 @@ func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
 
 	match := findSongInBandcamp(&song)
 
-	if (match != nil) {
+	if match != nil {
 		t.Fatalf("this song should not exist, but match was found: %+v", match)
 	}
 }
 
 func TestFindJapaneseSong(t *testing.T) {
 	song := InputTrack{
-		Idx: 1,
-		Name: "愛のせいで",
+		Idx:    1,
+		Name:   "愛のせいで",
 		Artist: "ZOMBIE-CHANG",
-		Album: "PETIT PETIT PETIT",
+		Album:  "PETIT PETIT PETIT",
 	}
 	match := findSongInBandcamp(&song)
 
-	if (match == nil) {
+	if match == nil {
 		t.Fatalf("this song by zombie chang should exist!")
 	}
 }

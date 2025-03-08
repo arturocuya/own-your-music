@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/jmoiron/sqlx"
@@ -29,7 +28,7 @@ func SaveSpotifySongs(tracks []InputTrack) {
 		log.Fatal("error inserting tracks as batch: ", err)
 	}
 
-	fmt.Printf("inserted %d tracks as batch\n", len(tracks))
+	log.Printf("inserted %d tracks as batch\n", len(tracks))
 }
 
 func ClearSpotifySongs() {

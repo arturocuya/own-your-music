@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"os/exec"
 	"runtime"
@@ -119,9 +120,9 @@ func levenshteinDistance(a, b string) int {
 func musicItemEquals(target string, maybe string) bool {
 	if containsEastAsianCharacters(target) {
 		lDistance := levenshteinDistance(target, maybe)
-		fmt.Println("for", target, "vs", maybe, "distance is:", lDistance, "and ratio is:", float64(lDistance) / float64(len(target)))
+		log.Println("for", target, "vs", maybe, "distance is:", lDistance, "and ratio is:", float64(lDistance)/float64(len(target)))
 		// tested 0.35 for japanese characters, not sure about other east asian langs
-		return float64(lDistance) / float64(len(target)) <= 0.35
+		return float64(lDistance)/float64(len(target)) <= 0.35
 	} else {
 		return strings.Contains(sanitizeForComparison(maybe), sanitizeForComparison(target))
 	}

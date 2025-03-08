@@ -2,3 +2,6 @@
 database.sqlite
 output.txt
 tmp
+ownyourmusic
+ownyourmusic.*
+logs/

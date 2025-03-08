@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -24,7 +25,7 @@ type PurchaseableTrack struct {
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
 func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
-	fmt.Printf("checking #%d: %s by %s from %s\n", track.Idx, track.Name, track.Artist, track.Album)
+	log.Printf("checking #%d: %s by %s from %s\n", track.Idx, track.Name, track.Artist, track.Album)
 	searchCollector := getNewBandcampCollector()
 
 	var match *PurchaseableTrack
@@ -71,10 +72,10 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 
 	albumMatch := ""
 
-	fmt.Printf("searching in %d possible album matches\n", len(possibleAlbumMatches))
+	log.Printf("searching in %d possible album matches\n", len(possibleAlbumMatches))
 
 	for _, albumUrl := range possibleAlbumMatches {
-		fmt.Println("trying possible album match", albumUrl)
+		log.Println("trying possible album match", albumUrl)
 
 		albumCollector := getNewBandcampCollector()
 
@@ -90,10 +91,10 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 			}
 
 			if isMatch {
-				fmt.Println("found album match", albumUrl)
+				log.Println("found album match", albumUrl)
 				albumMatch = albumUrl
 			} else {
-				fmt.Printf("album artist '%s' did not match '%s'\n", artistName, track.Artist)
+				log.Printf("album artist '%s' did not match '%s'\n", artistName, track.Artist)
 			}
 		})
 
@@ -110,7 +111,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	}
 
 	if match == nil {
-		fmt.Println("could not find song by album. will try to find by track...")
+		log.Println("could not find song by album. will try to find by track...")
 
 		var possibleTrackMatches []string
 
@@ -158,10 +159,10 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 
 		searchCollector.Wait()
 
-		fmt.Printf("searching %d possible track matches\n", len(possibleTrackMatches))
+		log.Printf("searching %d possible track matches\n", len(possibleTrackMatches))
 
 		for _, url := range possibleTrackMatches {
-			fmt.Println("trying possible track match", url)
+			log.Println("trying possible track match", url)
 			searchCollector.OnHTML("#bio-container", func(e *colly.HTMLElement) {
 				artistName := e.ChildText("#band-name-location > span:nth-child(1)")
 
@@ -180,7 +181,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 						SongUrl: strings.Split(url, "?")[0],
 					}
 				} else {
-					fmt.Printf("track artist '%s' did not match '%s'\n", artistName, track.Artist)
+					log.Printf("track artist '%s' did not match '%s'\n", artistName, track.Artist)
 				}
 			})
 			searchCollector.Visit(url)
@@ -198,7 +199,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 
 	match.SongIdx = track.Idx
 
-	fmt.Printf("found track match: '%s' at url %s \n", match.Name, match.SongUrl)
+	log.Printf("found track match: '%s' at url %s \n", match.Name, match.SongUrl)
 
 	// now let's find the song details like price
 
@@ -207,12 +208,12 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	detailsCollector.OnHTML(".buyItem.digital", func(e *colly.HTMLElement) {
 		priceText := e.ChildText("li.buyItem.digital > .ft > .ft.main-button > span > span.base-text-color")
 
-		fmt.Printf("price found: '%v'\n", priceText)
+		log.Printf("price found: '%v'\n", priceText)
 
 		if priceText != "" {
 			currencyText := e.ChildText(".ft:nth-child(1) > span:nth-child(2) > span:nth-child(2)")
 
-			fmt.Println("currencty found", currencyText)
+			log.Println("currencty found", currencyText)
 
 			match.RawPrice = priceText
 
@@ -221,7 +222,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 			if err == nil {
 				match.Price = price
 			} else {
-				fmt.Println("could not parse price. details:", err)
+				log.Println("could not parse price. details:", err)
 			}
 		} else {
 			nameYourPriceText := e.ChildText(".buyItemExtra.buyItemNyp.secondaryText")
@@ -233,7 +234,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 		}
 	})
 
-	fmt.Println("will search for price...")
+	log.Println("will search for price...")
 	detailsCollector.Visit(match.SongUrl)
 	detailsCollector.Wait()
 
@@ -306,7 +307,7 @@ func getNewBandcampCollector() *colly.Collector {
 
 	c.OnError(func(r *colly.Response, err error) {
 		if r != nil && r.Headers != nil {
-			fmt.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
+			log.Println("colly on error: ", err, r.Headers.Get("Retry-After"))
 		}
 
 		if err.Error() == "Too Many Requests" {

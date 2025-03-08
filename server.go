@@ -142,7 +142,7 @@ func serverSentEvents(c echo.Context) error {
 				})
 
 				if err != nil {
-					fmt.Println("template error", err)
+					log.Println("template error", err)
 					return err
 				}
 
@@ -190,7 +190,7 @@ func serverSentEvents(c echo.Context) error {
 				})
 
 				if err != nil {
-					fmt.Println("template error", err)
+					log.Println("template error", err)
 					return err
 				}
 			}
@@ -241,7 +241,7 @@ func loadSpotifySongs(c echo.Context) error {
 				Album:  track.Album.Name,
 				Idx:    i + 1,
 			})
-			fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+1, track.Name, track.Artists[0].Name)
+			log.Printf("Retrieved track #%d \"%s\" by %s \n", i+1, track.Name, track.Artists[0].Name)
 		}
 
 		loadSpotifySongsChan <- tracks
@@ -269,7 +269,7 @@ func loadSpotifySongs(c echo.Context) error {
 					Album:  track.Album.Name,
 					Idx:    i + offset + 1,
 				})
-				fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+offset+1, track.Name, track.Artists[0].Name)
+				log.Printf("Retrieved track #%d \"%s\" by %s \n", i+offset+1, track.Name, track.Artists[0].Name)
 			}
 
 			loadSpotifySongsChan <- tracks
@@ -315,14 +315,14 @@ func findSongs(c echo.Context) error {
 						totalInvestment[currencyCode] = moMoney
 					}
 
-					fmt.Println("updated prices")
+					log.Println("updated prices")
 					for key, value := range totalInvestment {
-						fmt.Printf("%v: %v\n", key, value.Display())
+						log.Printf("%v: %v\n", key, value.Display())
 					}
 				}
 				foundSongChan <- *result
 			} else {
-				fmt.Println("no match found for idx", track.Idx)
+				log.Println("no match found for idx", track.Idx)
 				foundSongChan <- PurchaseableTrack{
 					SongIdx: track.Idx,
 					SongUrl: "",
