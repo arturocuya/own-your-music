@@ -1,86 +1,33 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"os"
-
-	"github.com/google/uuid"
-	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
-type SpotifySong struct {
+type InputTrack struct {
 	Name   string `db:"name"`
 	Artist string `db:"artist"`
 	Album  string `db:"album"`
-	Index  int    `db:"index"`
+	Idx    int    `db:"idx"`
 }
 
-func fetchSpotifySongs() []SpotifySong {
-	auth := spotifyauth.New(
-		spotifyauth.WithRedirectURL("http://localhost:8080/callback"),
-		spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate, spotifyauth.ScopeUserLibraryRead),
-		spotifyauth.WithClientID(os.Getenv("SPOTIFY_CLIENT_ID")),
-		spotifyauth.WithClientSecret(os.Getenv("SPOTIFY_CLIENT_SECRET")),
-	)
+const SPOTIFY_CALLBACK_URL = "http://localhost:8081/spotify-auth-callback"
 
-	ch := make(chan *spotify.Client)
-
-	state := uuid.New().String()
-
-	startSpotifyCallbackServer(auth, state, ch)
-
-	url := auth.AuthURL(state)
-
-	fmt.Printf("login here to start process: %v\n", url)
-	OpenUrlInBrowser(url)
-
-	client := <-ch
-
-	var tracks []SpotifySong
-
-	// TODO: parallelize somehow
-	userTracks, err := client.CurrentUsersTracks(context.Background())
-
+func getSpotifyAuth() (*spotifyauth.Authenticator, error) {
+	spotifyClientId, err := GetKeyValue(KEY_SPOTIFY_CLIENT_ID)
 	if err != nil {
-		log.Fatal("error getting current user tracks at offset 0: ", err)
+		return nil, err
 	}
 
-	for i := 0; i < len(userTracks.Tracks); i++ {
-		track := userTracks.Tracks[i]
-		tracks = append(tracks, SpotifySong{
-			Name:   track.Name,
-			Artist: track.Artists[0].Name,
-			Album:  track.Album.Name,
-			Index:  i + 1,
-		})
-		fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+1, track.Name, track.Artists[0].Name)
+	spotifyClientSecret, err := GetKeyValue(KEY_SPOTIFY_CLIENT_SECRET)
+	if err != nil {
+		return nil, err
 	}
 
-	offset := len(userTracks.Tracks)
-
-	for userTracks.Next != "" {
-		userTracks, err = client.CurrentUsersTracks(context.Background(), spotify.Offset(offset))
-
-		if err != nil {
-			log.Fatalf("error getting current user tracks at offset %d: %s", offset, err)
-		}
-
-		for i := 0; i < len(userTracks.Tracks); i++ {
-			track := userTracks.Tracks[i]
-			tracks = append(tracks, SpotifySong{
-				Name:   track.Name,
-				Artist: track.Artists[0].Name,
-				Album:  track.Album.Name,
-				Index:  i + offset + 1,
-			})
-			fmt.Printf("Retrieved track #%d \"%s\" by %s \n", i+offset+1, track.Name, track.Artists[0].Name)
-		}
-
-		offset += len(userTracks.Tracks)
-	}
-
-	return tracks
+	return spotifyauth.New(
+		spotifyauth.WithRedirectURL(SPOTIFY_CALLBACK_URL),
+		spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate, spotifyauth.ScopeUserLibraryRead),
+		spotifyauth.WithClientID(spotifyClientId),
+		spotifyauth.WithClientSecret(spotifyClientSecret),
+	), nil
 }

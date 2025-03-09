@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+        <title>Own Your Music</title>
+    </head>
+    <body>
+        <h1>Own Your Music</h1>
+
+        <div id="total-investment"></div>
+
+        {{if .NeedsCredentials}}
+        <form hx-post="/update-spotify-credentials" hx-swap="none">
+            <div class="mb-4">
+                <label for="clientId"> Client ID </label>
+                <br />
+                <input type="text" id="clientId" name="clientId" required />
+            </div>
+            <div class="mb-6">
+                <label for="clientSecret"> Client Secret </label>
+                <br />
+                <div class="relative">
+                    <input
+                        type="password"
+                        id="clientSecret"
+                        name="clientSecret"
+                        required
+                    />
+                </div>
+            </div>
+            <br />
+            <button type="submit">Update Credentials</button>
+        </form>
+        {{end}}
+
+        <br />
+
+        {{if .AuthUrl}}
+        <a target="_blank" href="{{.AuthUrl}}">
+            <button>Authenticate with Spotify</button>
+        </a>
+        {{end}} {{if .CanLoadSpotifySongs}}
+        <button
+            hx-get="/load-spotify-songs"
+            hx-swap="none"
+            hx-confirm="Are you sure? This will delete your local data and load it from scratch"
+        >
+            Load Spotify songs
+        </button>
+        {{end}} {{if .CanFindSongs}}
+        <button hx-get="/find-songs" hx-swap="none">Find Songs!</button>
+        {{end}}
+
+        <ul
+            id="spotify-songs"
+            hx-ext="sse"
+            sse-connect="/sse"
+            sse-swap="message"
+            hx-swap="beforeend"
+        >
+            {{if .Tracks}}
+                {{range .Tracks}}
+                    {{template "components/source-track" .}}
+                {{end}}
+            {{else}}
+                <p>Here would go my tracks, if I had some :(</p>
+            {{end}}
+        </ul>
+    </body>
+
+    <script src="/public/htmx.js"></script>
+    <script src="/public/htmx-ext-sse.js"></script>
+
+    <!-- uncomment to test sse -->
+    <script>
+        document.body.addEventListener("htmx:sseMessage", function (e) {
+            console.log("message", e)
+        });
+
+        document.body.addEventListener("htmx:sseClose", function (e) {
+            console.log("close", e);
+        });
+    </script>
+</html>
