@@ -4,26 +4,14 @@ import (
 	// "database/sql"
 
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		panic(err.Error())
-	}
-
 	initLogger()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	// we have a main database that containes the cached list of spotify songs
 	// and also the cached results for bandcamp, amazon, etc.
@@ -74,8 +62,4 @@ func main() {
 	e.GET("/find-songs", findSongs)
 
 	e.Logger.Fatal(e.Start(":8081"))
-
-	<-sigChan
-	log.Println("Shutdown signal received. Closing log file and exiting.")
-	shutdownLogger()
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"github.com/Rhymond/go-money"
 	"github.com/labstack/echo/v4"
@@ -20,6 +21,9 @@ var foundSongChan = make(chan PurchaseableTrack)
 var flushCompleteChan = make(chan struct{})
 
 var totalInvestment = make(map[string]*money.Money)
+
+var totalSongs = 0
+var processedSongs int64
 
 func updateSpotifyCredentials(c echo.Context) error {
 	clientId := c.FormValue("clientId")
@@ -198,6 +202,8 @@ func serverSentEvents(c echo.Context) error {
 			content := strings.ReplaceAll(buf.String(), "\n", "")
 			content = strings.ReplaceAll(content, "\t", "")
 
+			content += fmt.Sprintf("<div id=\"progress\" hx-swap-oob=\"true\">%v / %v</div>", processedSongs, totalSongs)
+
 			data := fmt.Sprintf("data: %v\n\n", content)
 
 			if _, err := c.Response().Write([]byte(data)); err != nil {
@@ -300,6 +306,9 @@ func findSongs(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, fmt.Sprintf("error fetching existing spotify songs: %v", err))
 	}
 
+	totalSongs = len(tracks)
+	processedSongs = 0
+
 	go func() {
 		for _, track := range tracks {
 			result := findSongInBandcamp(&track)
@@ -328,6 +337,8 @@ func findSongs(c echo.Context) error {
 					SongUrl: "",
 				}
 			}
+
+			atomic.AddInt64(&processedSongs, 1)
 
 			// wait for SSE to flush message to client before attempting to fetch another value
 			// otherwise multiple writes can happen to the same response before flushing it, which will corrupt it

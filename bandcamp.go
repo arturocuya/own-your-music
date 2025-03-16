@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Rhymond/go-money"
@@ -21,6 +22,33 @@ type PurchaseableTrack struct {
 	AlbumUrl   string
 	RawPrice   string
 	Price      *money.Money
+}
+
+var (
+	eepyTime = sync.NewCond(&sync.Mutex{})
+	isEep    = false
+)
+
+// pauseRequests sets the paused flag and, after the specified duration,
+// clears it and signals waiting workers.
+func pauseRequests(duration time.Duration) {
+	eepyTime.L.Lock()
+	if !isEep {
+		isEep = true
+		eepyTime.L.Unlock()
+
+		go func() {
+			log.Println("eepying for", duration)
+			time.Sleep(duration)
+			log.Println("time to awek")
+			eepyTime.L.Lock()
+			isEep = false
+			eepyTime.Broadcast() // signal all waiting workers
+			eepyTime.L.Unlock()
+		}()
+	} else {
+		eepyTime.L.Unlock()
+	}
 }
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
@@ -61,7 +89,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 		})
 	})
 
-	searchCollector.Visit(fmt.Sprintf(
+	visitPage(searchCollector, fmt.Sprintf(
 		"https://bandcamp.com/search?q=%s&item_type=a&from=results",
 		url.QueryEscape(track.Album),
 	))
@@ -98,7 +126,8 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 			}
 		})
 
-		albumCollector.Visit(albumUrl)
+		visitPage(albumCollector, albumUrl)
+
 		albumCollector.Wait()
 
 		if albumMatch != "" {
@@ -152,7 +181,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 			})
 		})
 
-		searchCollector.Visit(fmt.Sprintf(
+		visitPage(searchCollector, fmt.Sprintf(
 			"https://bandcamp.com/search?q=%s&item_type=t&from=results",
 			url.QueryEscape(track.Name),
 		))
@@ -184,7 +213,9 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 					log.Printf("track artist '%s' did not match '%s'\n", artistName, track.Artist)
 				}
 			})
-			searchCollector.Visit(url)
+
+			visitPage(searchCollector, url)
+
 			searchCollector.Wait()
 
 			if match != nil {
@@ -235,7 +266,9 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	})
 
 	log.Println("will search for price...")
-	detailsCollector.Visit(match.SongUrl)
+
+	visitPage(detailsCollector, match.SongUrl)
+
 	detailsCollector.Wait()
 
 	return match
@@ -263,7 +296,7 @@ func findSongInAlbumPage(track *InputTrack, albumPageUrl string) *PurchaseableTr
 		})
 	})
 
-	c.Visit(albumPageUrl)
+	visitPage(c, albumPageUrl)
 
 	c.Wait()
 
@@ -314,9 +347,25 @@ func getNewBandcampCollector() *colly.Collector {
 			// TODO: not sure if it's ok to sleep in the coroutine
 			// but i guess it's ok as long as i don't send to the channel
 			// before the timer ends
-			time.Sleep(30 * time.Second)
+			log.Println("got too many requests. eepy time...")
+			pauseRequests(3 * time.Minute)
 		}
 	})
 
 	return c
+}
+
+func visitPage(c *colly.Collector, url string) {
+	// Check if a pause is in effect. If so, wait until it's cleared.
+	eepyTime.L.Lock()
+	for isEep {
+		eepyTime.Wait()
+	}
+	eepyTime.L.Unlock()
+	c.Visit(url)
+
+	// experimentally i found that aprox. 110 requests can be made to bandcamp
+	// before we hit "too many requests" errors, so if we wait 0.545 seconds between
+	// requests, we wouldn't hit the limit. 650ms has a bit more margin just to be sure.
+	pauseRequests(650 * time.Millisecond)
 }
