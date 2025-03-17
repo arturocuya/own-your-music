@@ -14,10 +14,13 @@ import (
 	"github.com/Rhymond/go-money"
 	"github.com/labstack/echo/v4"
 	"github.com/zmb3/spotify/v2"
+
+	"ownyourmusic/templates"
+	"ownyourmusic/types"
 )
 
-var loadSpotifySongsChan = make(chan []InputTrack)
-var foundSongChan = make(chan PurchaseableTrack)
+var loadSpotifySongsChan = make(chan []types.InputTrack)
+var foundSongChan = make(chan types.PurchaseableTrack)
 var flushCompleteChan = make(chan struct{})
 
 var totalInvestment = make(map[string]*money.Money)
@@ -98,13 +101,13 @@ func serverSentEvents(c echo.Context) error {
 				log.Fatal(err)
 			}
 
-			var tracksAndMatches []TrackAndMatch
+			var tracksAndMatches []types.TrackAndMatch
 
 			for _, track := range tracks {
-				tracksAndMatches = append(tracksAndMatches, TrackAndMatch{
+				tracksAndMatches = append(tracksAndMatches, types.TrackAndMatch{
 					Track: track,
 					// TODO: insert cached match
-					Match: PurchaseableTrack{},
+					Match: types.PurchaseableTrack{},
 				})
 			}
 
@@ -123,81 +126,33 @@ func serverSentEvents(c echo.Context) error {
 
 			flushCompleteChan <- struct{}{}
 		case foundMatch := <-foundSongChan:
+			type investmentEntry struct {
+				currency string
+				value    *money.Money
+			}
+
+			var investments []investmentEntry
+			for currency, money := range totalInvestment {
+				investments = append(investments, investmentEntry{
+					currency: currency,
+					value:    money,
+				})
+			}
+
+			sort.Slice(investments, func(i, j int) bool {
+				return investments[i].value.Amount() > investments[j].value.Amount()
+			})
+
+			var investmentTexts []string
+			for _, entry := range investments {
+				investmentTexts = append(investmentTexts, fmt.Sprintf("%s %s", entry.currency, entry.value.Display()))
+			}
+
+			component := templates.ResultFound(foundMatch, strings.Join(investmentTexts, " + "))
+
 			var buf bytes.Buffer
 
-			type PageData struct {
-				FoundMatch     PurchaseableTrack
-				InvestmentText string
-			}
-
-			if foundMatch.SongUrl == "" {
-				tmpl, err := template.New("dynamic").Parse(`
-					<ul id="result-for-{{.FoundMatch.SongIdx}}" hx-swap-oob="true">
-						<li>No match found :( </li>
-	                </ul>
-				`)
-
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				err = tmpl.Execute(&buf, PageData{
-					FoundMatch: foundMatch,
-				})
-
-				if err != nil {
-					log.Println("template error", err)
-					return err
-				}
-
-			} else {
-				tmpl := template.Must(template.ParseFiles("templates/match-result.html"))
-
-				tmpl, err := tmpl.New("dynamic").Parse(`
-					<ul id="result-for-{{.FoundMatch.SongIdx}}" hx-swap-oob="true">
-	                    {{template "components/match-result" .FoundMatch}}
-	                </ul>
-	                <div id="total-investment" hx-swap-oob="true">
-	                	Total investment: {{.InvestmentText}}
-	                </div>
-				`)
-
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				type investmentEntry struct {
-					currency string
-					value    *money.Money
-				}
-
-				var investments []investmentEntry
-				for currency, money := range totalInvestment {
-					investments = append(investments, investmentEntry{
-						currency: currency,
-						value:    money,
-					})
-				}
-
-				sort.Slice(investments, func(i, j int) bool {
-					return investments[i].value.Amount() > investments[j].value.Amount()
-				})
-
-				var investmentTexts []string
-				for _, entry := range investments {
-					investmentTexts = append(investmentTexts, fmt.Sprintf("%s %s", entry.currency, entry.value.Display()))
-				}
-
-				err = tmpl.Execute(&buf, PageData{
-					FoundMatch:     foundMatch,
-					InvestmentText: strings.Join(investmentTexts, " + "),
-				})
-
-				if err != nil {
-					log.Println("template error", err)
-					return err
-				}
-			}
+			component.Render(context.Background(), &buf)
 
 			content := strings.ReplaceAll(buf.String(), "\n", "")
 			content = strings.ReplaceAll(content, "\t", "")
@@ -237,11 +192,11 @@ func loadSpotifySongs(c echo.Context) error {
 			log.Fatal("error getting current user tracks at offset 0: ", err)
 		}
 
-		var tracks []InputTrack
+		var tracks []types.InputTrack
 
 		for i := range len(userTracks.Tracks) {
 			track := userTracks.Tracks[i]
-			tracks = append(tracks, InputTrack{
+			tracks = append(tracks, types.InputTrack{
 				Name:   track.Name,
 				Artist: track.Artists[0].Name,
 				Album:  track.Album.Name,
@@ -269,7 +224,7 @@ func loadSpotifySongs(c echo.Context) error {
 			tracks = tracks[:0]
 			for i := range len(userTracks.Tracks) {
 				track := userTracks.Tracks[i]
-				tracks = append(tracks, InputTrack{
+				tracks = append(tracks, types.InputTrack{
 					Name:   track.Name,
 					Artist: track.Artists[0].Name,
 					Album:  track.Album.Name,
@@ -298,7 +253,7 @@ func findSongs(c echo.Context) error {
 
 	defer db.Close()
 
-	var tracks []InputTrack
+	var tracks []types.InputTrack
 
 	err = db.Select(&tracks, "select * from spotify_songs order by \"idx\" asc")
 
@@ -310,6 +265,9 @@ func findSongs(c echo.Context) error {
 	processedSongs = 0
 
 	go func() {
+		// tried parallelizing this at num procs workers, but it would reach
+		// too many requests quickly, and with the proper request spacing
+		// it wasn't that different than searching sequentially
 		for _, track := range tracks {
 			result := findSongInBandcamp(&track)
 
@@ -332,7 +290,7 @@ func findSongs(c echo.Context) error {
 				foundSongChan <- *result
 			} else {
 				log.Println("no match found for idx", track.Idx)
-				foundSongChan <- PurchaseableTrack{
+				foundSongChan <- types.PurchaseableTrack{
 					SongIdx: track.Idx,
 					SongUrl: "",
 				}

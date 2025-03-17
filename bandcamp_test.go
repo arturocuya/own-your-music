@@ -1,13 +1,14 @@
 package main
 
 import (
+	"ownyourmusic/types"
 	"testing"
 
 	"github.com/Rhymond/go-money"
 )
 
 func TestHappyPath(t *testing.T) {
-	song := InputTrack{
+	song := types.InputTrack{
 		Idx:    1,
 		Name:   "The Bay",
 		Artist: "Metronomy",
@@ -46,7 +47,7 @@ func TestHappyPath(t *testing.T) {
 }
 
 func TestSpecialCharacters(t *testing.T) {
-	song := InputTrack{
+	song := types.InputTrack{
 		Idx:    1,
 		Name:   "still feel.",
 		Artist: "half•alive",
@@ -61,7 +62,7 @@ func TestSpecialCharacters(t *testing.T) {
 }
 
 func TestSongThatShouldntExist(t *testing.T) {
-	song := InputTrack{
+	song := types.InputTrack{
 		Idx:    1,
 		Name:   "Not Like Us",
 		Artist: "Kendrick Lamar",
@@ -76,7 +77,7 @@ func TestSongThatShouldntExist(t *testing.T) {
 }
 
 func TestSongWithForeignPriceAndNoAlbum(t *testing.T) {
-	song := InputTrack{
+	song := types.InputTrack{
 		Idx:    1,
 		Name:   "Fløjlstordensky",
 		Artist: "Hong Kong",
@@ -99,7 +100,7 @@ func TestSongWithForeignPriceAndNoAlbum(t *testing.T) {
 }
 
 func TestFreeNameYourPriceSong(t *testing.T) {
-	song := InputTrack{
+	song := types.InputTrack{
 		Idx:    1,
 		Name:   "Tree Among Shrubs",
 		Artist: "Men I Trust",
@@ -118,7 +119,7 @@ func TestFreeNameYourPriceSong(t *testing.T) {
 }
 
 func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
-	song := InputTrack{
+	song := types.InputTrack{
 		Idx:    1,
 		Name:   "reincarnated",
 		Artist: "Kendrick Lamar",
@@ -133,7 +134,7 @@ func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
 }
 
 func TestFindJapaneseSong(t *testing.T) {
-	song := InputTrack{
+	song := types.InputTrack{
 		Idx:    1,
 		Name:   "愛のせいで",
 		Artist: "ZOMBIE-CHANG",

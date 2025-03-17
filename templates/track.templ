@@ -1,0 +1,13 @@
+package templates
+
+import "ownyourmusic/types"
+import "fmt"
+
+templ Track(track types.InputTrack, match types.PurchaseableTrack) {
+	<li id={ track.StrIdx() }>
+		{ track.Name } ({ track.Album }) -- { track.Artist }
+	</li>
+	<ul id={ fmt.Sprintf("result-for-%d", track.Idx) }>
+		@MatchResult(match)
+	</ul>
+}

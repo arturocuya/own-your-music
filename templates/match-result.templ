@@ -1,0 +1,12 @@
+package templates
+
+import "ownyourmusic/types"
+
+templ MatchResult(match types.PurchaseableTrack) {
+	if match.SongUrl != "" {
+		<li>
+			Match found!
+			<a target="_blank" href={ templ.URL(match.SongUrl) }>{ match.SongUrl }</a>
+		</li>
+	}
+}

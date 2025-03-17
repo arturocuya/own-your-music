@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"ownyourmusic/types"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -13,7 +14,7 @@ func OpenDatabase() (*sqlx.DB, error) {
 	return sqlx.Open("sqlite3", DB_PATH)
 }
 
-func SaveSpotifySongs(tracks []InputTrack) {
+func SaveSpotifySongs(tracks []types.InputTrack) {
 	db, err := OpenDatabase()
 
 	if err != nil {

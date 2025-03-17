@@ -5,17 +5,13 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"ownyourmusic/types"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
-
-type TrackAndMatch struct {
-	Track InputTrack
-	Match PurchaseableTrack
-}
 
 func Homepage(c echo.Context) error {
 	db, err := OpenDatabase()
@@ -28,13 +24,13 @@ func Homepage(c echo.Context) error {
 
 	var pageData struct {
 		NeedsCredentials    bool
-		Tracks              []TrackAndMatch
+		Tracks              []types.TrackAndMatch
 		AuthUrl             string
 		CanLoadSpotifySongs bool
 		CanFindSongs        bool
 	}
 
-	var tracks []InputTrack
+	var tracks []types.InputTrack
 
 	err = db.Select(&tracks, "select * from spotify_songs order by \"idx\" asc")
 
@@ -44,10 +40,10 @@ func Homepage(c echo.Context) error {
 
 	for _, track := range tracks {
 		pageData.Tracks = append(pageData.Tracks,
-			TrackAndMatch{
+			types.TrackAndMatch{
 				Track: track,
 				// TODO: insert cached match
-				Match: PurchaseableTrack{},
+				Match: types.PurchaseableTrack{},
 			})
 	}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"ownyourmusic/types"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,16 +14,6 @@ import (
 	"github.com/gocolly/colly/v2"
 	"golang.org/x/text/currency"
 )
-
-type PurchaseableTrack struct {
-	SongIdx    int
-	Name       string
-	Subheading string
-	SongUrl    string
-	AlbumUrl   string
-	RawPrice   string
-	Price      *money.Money
-}
 
 var (
 	eepyTime = sync.NewCond(&sync.Mutex{})
@@ -52,11 +43,11 @@ func pauseRequests(duration time.Duration) {
 }
 
 // search for album. check if name and artist matches. enter album. check if song name matches.
-func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
+func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 	log.Printf("checking #%d: %s by %s from %s\n", track.Idx, track.Name, track.Artist, track.Album)
 	searchCollector := getNewBandcampCollector()
 
-	var match *PurchaseableTrack
+	var match *types.PurchaseableTrack
 
 	var possibleAlbumMatches []string
 
@@ -205,7 +196,7 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 
 				if isMatch {
 					songName := e.ChildText("h2.trackTitle")
-					match = &PurchaseableTrack{
+					match = &types.PurchaseableTrack{
 						Name:    songName,
 						SongUrl: strings.Split(url, "?")[0],
 					}
@@ -274,10 +265,10 @@ func findSongInBandcamp(track *InputTrack) *PurchaseableTrack {
 	return match
 }
 
-func findSongInAlbumPage(track *InputTrack, albumPageUrl string) *PurchaseableTrack {
+func findSongInAlbumPage(track *types.InputTrack, albumPageUrl string) *types.PurchaseableTrack {
 	c := getNewBandcampCollector()
 
-	var match *PurchaseableTrack
+	var match *types.PurchaseableTrack
 
 	c.OnHTML(".track_table", func(table *colly.HTMLElement) {
 		table.ForEachWithBreak(".track_row_view", func(_ int, trackRow *colly.HTMLElement) bool {
@@ -285,7 +276,7 @@ func findSongInAlbumPage(track *InputTrack, albumPageUrl string) *PurchaseableTr
 
 			if musicItemEquals(track.Name, title) {
 				path := trackRow.ChildAttr(".title a", "href")
-				match = &PurchaseableTrack{
+				match = &types.PurchaseableTrack{
 					Name:    title,
 					SongUrl: fmt.Sprintf("%s%s", getBaseURL(albumPageUrl), path),
 				}
