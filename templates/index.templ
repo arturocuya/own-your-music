@@ -1,0 +1,89 @@
+package templates
+
+import "ownyourmusic/types"
+
+type IndexConfig struct {
+	NeedsCredentials    bool
+	CanLoadSpotifySongs bool
+}
+
+templ Index(authUrl string, tracks []types.TrackAndMatch, config IndexConfig) {
+	{{ canFindSongs := !config.NeedsCredentials && len(tracks) > 0 }}
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<meta http-equiv="X-UA-Compatible" content="ie=edge"/>
+		<title>Own Your Music</title>
+	</head>
+	<body>
+		<h1>Own Your Music</h1>
+		<div id="total-investment"></div>
+		<div id="progress"></div>
+		if config.NeedsCredentials {
+			<form hx-post="/update-spotify-credentials" hx-swap="none">
+				<div class="mb-4">
+					<label for="clientId">Client ID </label>
+					<br/>
+					<input type="text" id="clientId" name="clientId" required/>
+				</div>
+				<div class="mb-6">
+					<label for="clientSecret">Client Secret </label>
+					<br/>
+					<div class="relative">
+						<input
+							type="password"
+							id="clientSecret"
+							name="clientSecret"
+							required
+						/>
+					</div>
+				</div>
+				<br/>
+				<button type="submit">Update Credentials</button>
+			</form>
+		}
+		if authUrl != "" {
+			<a target="_blank" href="{{.AuthUrl}}">
+				<button>Authenticate with Spotify</button>
+			</a>
+		}
+		if config.CanLoadSpotifySongs {
+			<button
+				hx-get="/load-spotify-songs"
+				hx-swap="none"
+				hx-confirm="Are you sure? This will delete your local data and load it from scratch"
+			>
+				Load Spotify songs
+			</button>
+		}
+		if canFindSongs {
+			<button hx-get="/find-songs" hx-swap="none">Find Songs!</button>
+		}
+		<ul
+			id="spotify-songs"
+			hx-ext="sse"
+			sse-connect="/sse"
+			sse-swap="message"
+			hx-swap="beforeend"
+		>
+			if len(tracks) > 0 {
+				for _, track := range(tracks) {
+					@Track(track.Track, track.Match)
+				}
+			} else {
+				<p>Here would go my tracks, if I had some :(</p>
+			}
+		</ul>
+	</body>
+	<script src="/public/htmx.js"></script>
+	<script src="/public/htmx-ext-sse.js"></script>
+	<!-- uncomment to test sse -->
+	// <script>
+	//     document.body.addEventListener("htmx:sseMessage", function (e) {
+	//         console.log("message", e)
+	//     });
+	//     document.body.addEventListener("htmx:sseClose", function (e) {
+	//         console.log("close", e);
+	//     });
+	// </script>
+}

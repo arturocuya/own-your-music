@@ -1,8 +1,0 @@
-{{define "components/source-track"}}
-<li id="{{.Track.Idx}}">
-    {{.Track.Name}} ({{.Track.Album}}) -- {{.Track.Artist}}
-</li>
-<ul id="result-for-{{.Track.Idx}}">
-    {{template "components/match-result" .Match}}
-</ul>
-{{end}}

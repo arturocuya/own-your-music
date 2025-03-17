@@ -1,10 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
+	"ownyourmusic/templates"
 	"ownyourmusic/types"
 	"strings"
 
@@ -22,13 +23,10 @@ func Homepage(c echo.Context) error {
 
 	defer db.Close()
 
-	var pageData struct {
-		NeedsCredentials    bool
-		Tracks              []types.TrackAndMatch
-		AuthUrl             string
-		CanLoadSpotifySongs bool
-		CanFindSongs        bool
-	}
+	pageData := templates.IndexConfig{}
+
+	var pageTracks []types.TrackAndMatch
+	var authUrl string
 
 	var tracks []types.InputTrack
 
@@ -39,7 +37,7 @@ func Homepage(c echo.Context) error {
 	}
 
 	for _, track := range tracks {
-		pageData.Tracks = append(pageData.Tracks,
+		pageTracks = append(pageTracks,
 			types.TrackAndMatch{
 				Track: track,
 				// TODO: insert cached match
@@ -78,16 +76,14 @@ func Homepage(c echo.Context) error {
 
 		SetKeyValue(KEY_SPOTIFY_AUTH_STATE, state)
 
-		pageData.AuthUrl = auth.AuthURL(state)
+		authUrl = auth.AuthURL(state)
 	}
 
 	pageData.CanLoadSpotifySongs = token != nil && token.Valid()
 
-	pageData.CanFindSongs = !pageData.NeedsCredentials && len(pageData.Tracks) > 0
+	tmpl := templates.Index(authUrl, pageTracks, pageData)
 
-	tmpl := template.Must(template.ParseFiles("templates/index.html", "templates/track.html", "templates/match-result.html"))
-
-	err = tmpl.Execute(c.Response(), pageData)
+	err = tmpl.Render(context.Background(), c.Response())
 
 	return err
 }
