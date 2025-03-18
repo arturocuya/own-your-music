@@ -9,6 +9,7 @@ type IndexConfig struct {
 
 templ Index(authUrl string, tracks []types.TrackAndMatch, config IndexConfig) {
 	{{ canFindSongs := !config.NeedsCredentials && len(tracks) > 0 }}
+	<!DOCTYPE html>
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -43,12 +44,13 @@ templ Index(authUrl string, tracks []types.TrackAndMatch, config IndexConfig) {
 			</form>
 		}
 		if authUrl != "" {
-			<a target="_blank" href="{{.AuthUrl}}">
+			<a target="_blank" href={ templ.URL(authUrl) }>
 				<button>Authenticate with Spotify</button>
 			</a>
 		}
 		if config.CanLoadSpotifySongs {
 			<button
+				id="load-spotify-songs-btn"
 				hx-get="/load-spotify-songs"
 				hx-swap="none"
 				hx-confirm="Are you sure? This will delete your local data and load it from scratch"
@@ -77,6 +79,13 @@ templ Index(authUrl string, tracks []types.TrackAndMatch, config IndexConfig) {
 	</body>
 	<script src="/public/htmx.js"></script>
 	<script src="/public/htmx-ext-sse.js"></script>
+	<script>
+		htmx.on("htmx:beforeSend", function(e) {
+			if(e.detail.elt.id === "load-spotify-songs-btn") {
+	    		document.getElementById("spotify-songs").innerHTML = ""
+			}
+		})
+	</script>
 	<!-- uncomment to test sse -->
 	// <script>
 	//     document.body.addEventListener("htmx:sseMessage", function (e) {

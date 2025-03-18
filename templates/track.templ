@@ -11,3 +11,9 @@ templ Track(track types.InputTrack, match types.PurchaseableTrack) {
 		@MatchResult(match)
 	</ul>
 }
+
+templ ManyTracks(matches []types.TrackAndMatch) {
+	for _, match := range(matches) {
+		@Track(match.Track, match.Match)
+	}
+}

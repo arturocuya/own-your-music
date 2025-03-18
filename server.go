@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"sort"
@@ -89,18 +88,7 @@ func serverSentEvents(c echo.Context) error {
 		case <-c.Request().Context().Done():
 			return nil
 		case tracks := <-loadSpotifySongsChan:
-			tmpl := template.Must(template.ParseFiles("templates/track.html", "templates/match-result.html"))
-
-			tmpl, err := tmpl.New("dynamic").Parse(`
-                {{range .}}
-                    {{template "components/source-track" .}}
-                {{end}}
-			`)
-
-			if err != nil {
-				log.Fatal(err)
-			}
-
+			log.Println("sse tracks")
 			var tracksAndMatches []types.TrackAndMatch
 
 			for _, track := range tracks {
@@ -112,7 +100,9 @@ func serverSentEvents(c echo.Context) error {
 			}
 
 			var buf bytes.Buffer
-			tmpl.Execute(&buf, tracksAndMatches)
+
+			tmpl := templates.ManyTracks(tracksAndMatches)
+			tmpl.Render(context.Background(), &buf)
 
 			content := strings.ReplaceAll(buf.String(), "\n", "")
 			content = strings.ReplaceAll(content, "\t", "")
@@ -123,9 +113,8 @@ func serverSentEvents(c echo.Context) error {
 				return err
 			}
 			c.Response().Flush()
-
-			flushCompleteChan <- struct{}{}
 		case foundMatch := <-foundSongChan:
+			log.Println("sse found match")
 			type investmentEntry struct {
 				currency string
 				value    *money.Money
