@@ -148,3 +148,16 @@ func TestFindJapaneseSong(t *testing.T) {
 }
 
 // TODO: what about "Y Dime" vs "Y ... Dime" from Ms Nina?
+func TestFindSongWithEllipsis(t *testing.T) {
+	song := types.InputTrack{
+		Idx:    1,
+		Name:   "Y Dime (feat. Tomasa del Real)",
+		Artist: "Ms Nina",
+		Album:  "Y Dime",
+	}
+	match := findSongInBandcamp(&song)
+
+	if match == nil {
+		t.Fatalf("this song by ms nina should exist!")
+	}
+}

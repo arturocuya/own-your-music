@@ -51,6 +51,12 @@ func sanitizeForComparison(text string) string {
 	}
 
 	text = strings.Join(splitted, "")
+
+	text = strings.ReplaceAll(text, "...", " ")
+
+	// reduce extra whitespace between words
+	text = strings.Join(strings.Fields(text), " ")
+
 	text = strings.Trim(text, " \t")
 	text = strings.ToLower(text)
 
