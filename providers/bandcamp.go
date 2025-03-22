@@ -1,10 +1,11 @@
-package main
+package providers
 
 import (
 	"fmt"
 	"log"
 	"net/url"
 	"ownyourmusic/types"
+	"ownyourmusic/utils"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,10 +43,11 @@ func pauseRequests(duration time.Duration) {
 	}
 }
 
-// search for album. check if name and artist matches. enter album. check if song name matches.
-func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
+type BandcampProvider struct{}
+
+func (p BandcampProvider) FindSong(track *types.InputTrack) *types.PurchaseableTrack {
 	log.Printf("checking #%d: %s by %s from %s\n", track.Idx, track.Name, track.Artist, track.Album)
-	searchCollector := getNewBandcampCollector()
+	searchCollector := p.getNewBandcampCollector()
 
 	var match *types.PurchaseableTrack
 
@@ -61,14 +63,14 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 
 			albumName := h.ChildText(".result-info .heading")
 
-			if !musicItemEquals(track.Album, albumName) {
+			if !utils.MusicItemEquals(track.Album, albumName) {
 				return true
 			}
 
 			subheading := h.ChildText(".result-info .subhead")
 
 			// example subheading: "by Digitalism"
-			if !strings.Contains(sanitizeForComparison(subheading), sanitizeForComparison(track.Artist)) {
+			if !strings.Contains(utils.SanitizeForComparison(subheading), utils.SanitizeForComparison(track.Artist)) {
 				return true
 			}
 
@@ -80,7 +82,7 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 		})
 	})
 
-	visitPage(searchCollector, fmt.Sprintf(
+	p.visitPage(searchCollector, fmt.Sprintf(
 		"https://bandcamp.com/search?q=%s&item_type=a&from=results",
 		url.QueryEscape(track.Album),
 	))
@@ -96,17 +98,17 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 	for _, albumUrl := range possibleAlbumMatches {
 		log.Println("trying possible album match", albumUrl)
 
-		albumCollector := getNewBandcampCollector()
+		albumCollector := p.getNewBandcampCollector()
 
 		albumCollector.OnHTML("#bio-container", func(e *colly.HTMLElement) {
 			artistName := e.ChildText("#band-name-location > span:nth-child(1)")
 
 			isMatch := false
 
-			if containsEastAsianCharacters(track.Artist) {
-				isMatch = musicItemEquals(track.Artist, artistName)
+			if utils.ContainsEastAsianCharacters(track.Artist) {
+				isMatch = utils.MusicItemEquals(track.Artist, artistName)
 			} else {
-				isMatch = sanitizeForComparison(track.Artist) == sanitizeForComparison(artistName)
+				isMatch = utils.SanitizeForComparison(track.Artist) == utils.SanitizeForComparison(artistName)
 			}
 
 			if isMatch {
@@ -117,7 +119,7 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 			}
 		})
 
-		visitPage(albumCollector, albumUrl)
+		p.visitPage(albumCollector, albumUrl)
 
 		albumCollector.Wait()
 
@@ -127,7 +129,7 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 	}
 
 	if albumMatch != "" {
-		match = findSongInAlbumPage(track, albumMatch)
+		match = p.findSongInAlbumPage(track, albumMatch)
 	}
 
 	if match == nil {
@@ -146,7 +148,7 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 
 				songName := h.ChildText(".result-info .heading")
 
-				if !musicItemEquals(track.Name, songName) {
+				if !utils.MusicItemEquals(track.Name, songName) {
 					return true
 				}
 
@@ -154,14 +156,14 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 				alternativeKeywords := []string{"remix", "clean]", "clean)", "edit]", "edit)", "mashup"}
 
 				for _, altKeyword := range alternativeKeywords {
-					if !strings.Contains(songName, altKeyword) && strings.Contains(sanitizeForComparison(songName), sanitizeForComparison(altKeyword)) {
+					if !strings.Contains(songName, altKeyword) && strings.Contains(utils.SanitizeForComparison(songName), utils.SanitizeForComparison(altKeyword)) {
 						return true
 					}
 				}
 
 				subheading := strings.ToLower(h.ChildText(".result-info .subhead"))
 
-				if strings.Contains(sanitizeForComparison(subheading), sanitizeForComparison(track.Artist)) {
+				if strings.Contains(utils.SanitizeForComparison(subheading), utils.SanitizeForComparison(track.Artist)) {
 					songUrl := h.ChildText(".result-info .itemurl")
 					possibleTrackMatches = append(possibleTrackMatches, strings.Split(songUrl, "?")[0])
 
@@ -172,7 +174,7 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 			})
 		})
 
-		visitPage(searchCollector, fmt.Sprintf(
+		p.visitPage(searchCollector, fmt.Sprintf(
 			"https://bandcamp.com/search?q=%s&item_type=t&from=results",
 			url.QueryEscape(track.Name),
 		))
@@ -188,10 +190,10 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 
 				isMatch := false
 
-				if containsEastAsianCharacters(track.Artist) {
-					isMatch = musicItemEquals(track.Artist, artistName)
+				if utils.ContainsEastAsianCharacters(track.Artist) {
+					isMatch = utils.MusicItemEquals(track.Artist, artistName)
 				} else {
-					isMatch = sanitizeForComparison(track.Artist) == sanitizeForComparison(artistName)
+					isMatch = utils.SanitizeForComparison(track.Artist) == utils.SanitizeForComparison(artistName)
 				}
 
 				if isMatch {
@@ -205,7 +207,7 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 				}
 			})
 
-			visitPage(searchCollector, url)
+			p.visitPage(searchCollector, url)
 
 			searchCollector.Wait()
 
@@ -225,7 +227,7 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 
 	// now let's find the song details like price
 
-	detailsCollector := getNewBandcampCollector()
+	detailsCollector := p.getNewBandcampCollector()
 
 	detailsCollector.OnHTML(".buyItem.digital", func(e *colly.HTMLElement) {
 		priceText := e.ChildText("li.buyItem.digital > .ft > .ft.main-button > span > span.base-text-color")
@@ -239,7 +241,7 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 
 			match.RawPrice = priceText
 
-			price, err := parseBandcampPrice(priceText, currencyText)
+			price, err := p.parseBandcampPrice(priceText, currencyText)
 
 			if err == nil {
 				match.Price = price
@@ -258,15 +260,15 @@ func findSongInBandcamp(track *types.InputTrack) *types.PurchaseableTrack {
 
 	log.Println("will search for price...")
 
-	visitPage(detailsCollector, match.SongUrl)
+	p.visitPage(detailsCollector, match.SongUrl)
 
 	detailsCollector.Wait()
 
 	return match
 }
 
-func findSongInAlbumPage(track *types.InputTrack, albumPageUrl string) *types.PurchaseableTrack {
-	c := getNewBandcampCollector()
+func (p BandcampProvider) findSongInAlbumPage(track *types.InputTrack, albumPageUrl string) *types.PurchaseableTrack {
+	c := p.getNewBandcampCollector()
 
 	var match *types.PurchaseableTrack
 
@@ -274,11 +276,11 @@ func findSongInAlbumPage(track *types.InputTrack, albumPageUrl string) *types.Pu
 		table.ForEachWithBreak(".track_row_view", func(_ int, trackRow *colly.HTMLElement) bool {
 			title := trackRow.ChildText(".track-title")
 
-			if musicItemEquals(track.Name, title) {
+			if utils.MusicItemEquals(track.Name, title) {
 				path := trackRow.ChildAttr(".title a", "href")
 				match = &types.PurchaseableTrack{
 					Name:    title,
-					SongUrl: fmt.Sprintf("%s%s", getBaseURL(albumPageUrl), path),
+					SongUrl: fmt.Sprintf("%s%s", utils.GetBaseURL(albumPageUrl), path),
 				}
 				return false
 			}
@@ -287,7 +289,7 @@ func findSongInAlbumPage(track *types.InputTrack, albumPageUrl string) *types.Pu
 		})
 	})
 
-	visitPage(c, albumPageUrl)
+	p.visitPage(c, albumPageUrl)
 
 	c.Wait()
 
@@ -295,14 +297,14 @@ func findSongInAlbumPage(track *types.InputTrack, albumPageUrl string) *types.Pu
 }
 
 // reference: https://get.bandcamp.help/hc/en-us/articles/23020726236823-Which-currencies-does-Bandcamp-support
-func parseBandcampPrice(rawPrice string, currencyCode string) (*money.Money, error) {
+func (p BandcampProvider) parseBandcampPrice(rawPrice string, currencyCode string) (*money.Money, error) {
 	_, err := currency.ParseISO(currencyCode)
 
 	if err != nil {
 		return nil, err
 	}
 
-	priceNumber := removeNonNumericPrefixSuffix(rawPrice)
+	priceNumber := utils.RemoveNonNumericPrefixSuffix(rawPrice)
 	splitted := strings.Split(priceNumber, ".")
 
 	units, err := strconv.Atoi(splitted[0])
@@ -326,7 +328,7 @@ func parseBandcampPrice(rawPrice string, currencyCode string) (*money.Money, err
 	return money.New(amount, currencyCode), nil
 }
 
-func getNewBandcampCollector() *colly.Collector {
+func (p BandcampProvider) getNewBandcampCollector() *colly.Collector {
 	c := colly.NewCollector()
 
 	c.OnError(func(r *colly.Response, err error) {
@@ -346,7 +348,7 @@ func getNewBandcampCollector() *colly.Collector {
 	return c
 }
 
-func visitPage(c *colly.Collector, url string) {
+func (p BandcampProvider) visitPage(c *colly.Collector, url string) {
 	// Check if a pause is in effect. If so, wait until it's cleared.
 	eepyTime.L.Lock()
 	for isEep {

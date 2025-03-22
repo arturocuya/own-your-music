@@ -14,6 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/zmb3/spotify/v2"
 
+	"ownyourmusic/providers"
 	"ownyourmusic/templates"
 	"ownyourmusic/types"
 )
@@ -253,12 +254,12 @@ func findSongs(c echo.Context) error {
 	totalSongs = len(tracks)
 	processedSongs = 0
 
-	go func() {
+	go func(mainProvider providers.Provider) {
 		// tried parallelizing this at num procs workers, but it would reach
 		// too many requests quickly, and with the proper request spacing
 		// it wasn't that different than searching sequentially
 		for _, track := range tracks {
-			result := findSongInBandcamp(&track)
+			result := mainProvider.FindSong(&track)
 
 			if result != nil {
 				if result.Price != nil {
@@ -291,7 +292,7 @@ func findSongs(c echo.Context) error {
 			// otherwise multiple writes can happen to the same response before flushing it, which will corrupt it
 			<-flushCompleteChan
 		}
-	}()
+	}(providers.BandcampProvider{})
 
 	return c.NoContent(http.StatusOK)
 }
