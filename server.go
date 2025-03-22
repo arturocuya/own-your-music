@@ -187,10 +187,12 @@ func loadSpotifySongs(c echo.Context) error {
 		for i := range len(userTracks.Tracks) {
 			track := userTracks.Tracks[i]
 			tracks = append(tracks, types.InputTrack{
+				ProviderName: "spotify", // TODO: generalize
+				ProviderId: string(track.ID),
+				AddedAt: track.AddedAt,
 				Name:   track.Name,
 				Artist: track.Artists[0].Name,
 				Album:  track.Album.Name,
-				Idx:    i + 1,
 			})
 			log.Printf("Retrieved track #%d \"%s\" by %s \n", i+1, track.Name, track.Artists[0].Name)
 		}
@@ -215,10 +217,12 @@ func loadSpotifySongs(c echo.Context) error {
 			for i := range len(userTracks.Tracks) {
 				track := userTracks.Tracks[i]
 				tracks = append(tracks, types.InputTrack{
+					ProviderName: "spotify", // TODO: generalize
+					ProviderId: string(track.ID),
+					AddedAt: track.AddedAt,
 					Name:   track.Name,
 					Artist: track.Artists[0].Name,
 					Album:  track.Album.Name,
-					Idx:    i + offset + 1,
 				})
 				log.Printf("Retrieved track #%d \"%s\" by %s \n", i+offset+1, track.Name, track.Artists[0].Name)
 			}
@@ -279,9 +283,8 @@ func findSongs(c echo.Context) error {
 				}
 				foundSongChan <- *result
 			} else {
-				log.Println("no match found for idx", track.Idx)
+				log.Println("no match found for idx", track.ComposedId())
 				foundSongChan <- types.PurchaseableTrack{
-					SongIdx: track.Idx,
 					SongUrl: "",
 				}
 			}

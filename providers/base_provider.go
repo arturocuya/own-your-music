@@ -5,5 +5,6 @@ import (
 )
 
 type Provider interface {
+	GetProviderName() string
 	FindSong(track *types.InputTrack) *types.PurchaseableTrack
 }

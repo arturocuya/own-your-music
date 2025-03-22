@@ -12,7 +12,6 @@ var bc = providers.BandcampProvider{}
 
 func TestHappyPath(t *testing.T) {
 	song := types.InputTrack{
-		Idx:    1,
 		Name:   "The Bay",
 		Artist: "Metronomy",
 		Album:  "The English Riviera",
@@ -22,10 +21,6 @@ func TestHappyPath(t *testing.T) {
 
 	if match == nil {
 		t.Fatalf("match not found for %+v\n", song)
-	}
-
-	if match.SongIdx != song.Idx {
-		t.Fatalf("song idx %v does not match original %v\n", match.SongIdx, song.Idx)
 	}
 
 	if match.Name != "The Bay" {
@@ -51,7 +46,6 @@ func TestHappyPath(t *testing.T) {
 
 func TestSpecialCharacters(t *testing.T) {
 	song := types.InputTrack{
-		Idx:    1,
 		Name:   "still feel.",
 		Artist: "half•alive",
 		Album:  "Now, Not Yet",
@@ -66,7 +60,6 @@ func TestSpecialCharacters(t *testing.T) {
 
 func TestSongThatShouldntExist(t *testing.T) {
 	song := types.InputTrack{
-		Idx:    1,
 		Name:   "Not Like Us",
 		Artist: "Kendrick Lamar",
 		Album:  "Not Like Us",
@@ -81,7 +74,6 @@ func TestSongThatShouldntExist(t *testing.T) {
 
 func TestSongWithForeignPriceAndNoAlbum(t *testing.T) {
 	song := types.InputTrack{
-		Idx:    1,
 		Name:   "Fløjlstordensky",
 		Artist: "Hong Kong",
 		Album:  "Fløjlstordensky",
@@ -104,7 +96,6 @@ func TestSongWithForeignPriceAndNoAlbum(t *testing.T) {
 
 func TestFreeNameYourPriceSong(t *testing.T) {
 	song := types.InputTrack{
-		Idx:    1,
 		Name:   "Tree Among Shrubs",
 		Artist: "Men I Trust",
 		Album:  "Untourable Album",
@@ -123,7 +114,6 @@ func TestFreeNameYourPriceSong(t *testing.T) {
 
 func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
 	song := types.InputTrack{
-		Idx:    1,
 		Name:   "reincarnated",
 		Artist: "Kendrick Lamar",
 		Album:  "GNX",
@@ -138,7 +128,6 @@ func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
 
 func TestFindJapaneseSong(t *testing.T) {
 	song := types.InputTrack{
-		Idx:    1,
 		Name:   "愛のせいで",
 		Artist: "ZOMBIE-CHANG",
 		Album:  "PETIT PETIT PETIT",
@@ -153,7 +142,6 @@ func TestFindJapaneseSong(t *testing.T) {
 // TODO: what about "Y Dime" vs "Y ... Dime" from Ms Nina?
 func TestFindSongWithEllipsis(t *testing.T) {
 	song := types.InputTrack{
-		Idx:    1,
 		Name:   "Y Dime (feat. Tomasa del Real)",
 		Artist: "Ms Nina",
 		Album:  "Y Dime",

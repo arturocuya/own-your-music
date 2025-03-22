@@ -32,7 +32,9 @@ func main() {
 	}
 
 	_, err = db.Exec(`create table if not exists spotify_songs(
-		idx integer,
+		added_at string,
+		provider_name string,
+		provider_id string,
 		name string,
 		artist string,
 		album string

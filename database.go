@@ -23,7 +23,7 @@ func SaveSpotifySongs(tracks []types.InputTrack) {
 
 	defer db.Close()
 
-	_, err = db.NamedExec("insert into spotify_songs (name, artist, \"idx\", album) values (:name, :artist, :idx, :album)", tracks)
+	_, err = db.NamedExec("insert into spotify_songs (name, artist, album, added_at, provider_name, provider_id) values (:name, :artist, :album, :added_at, :provider_name, :provider_id)", tracks)
 
 	if err != nil {
 		log.Fatal("error inserting tracks as batch: ", err)
@@ -44,6 +44,6 @@ func ClearSpotifySongs() {
 	_, err = db.Exec("delete from spotify_songs")
 
 	if err != nil {
-		log.Fatal("error inserting tracks as batch: ", err)
+		log.Fatal("error clearing songs: ", err)
 	}
 }

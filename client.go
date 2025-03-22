@@ -30,7 +30,7 @@ func Homepage(c echo.Context) error {
 
 	var tracks []types.InputTrack
 
-	err = db.Select(&tracks, "select * from spotify_songs order by \"idx\" asc")
+	err = db.Select(&tracks, "select * from spotify_songs order by \"added_at\" desc")
 
 	if err != nil {
 		return c.String(http.StatusInternalServerError, fmt.Sprintf("error fetching existing spotify songs: %v", err))

@@ -1,20 +1,22 @@
 package types
 
 import (
-	"strconv"
+	"fmt"
 
 	"github.com/Rhymond/go-money"
 )
 
 type InputTrack struct {
-	Name   string `db:"name"`
-	Artist string `db:"artist"`
-	Album  string `db:"album"`
-	Idx    int    `db:"idx"`
+	ProviderName string `db:"provider_name"`
+	ProviderId string `db:"provider_id"`
+	AddedAt string `db:"added_at"` // ISO 8601
+	Name    string `db:"name"`
+	Artist  string `db:"artist"`
+	Album   string `db:"album"`
 }
 
-func (t InputTrack) StrIdx() string {
-	return strconv.Itoa(t.Idx)
+func (t InputTrack) ComposedId() string {
+	return fmt.Sprintf("%s--%s", t.ProviderName, t.ProviderId)
 }
 
 type PurchaseableTrack struct {

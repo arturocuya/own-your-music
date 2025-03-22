@@ -45,8 +45,12 @@ func pauseRequests(duration time.Duration) {
 
 type BandcampProvider struct{}
 
+func (p BandcampProvider) GetProviderName() string {
+	return BANDCAMP_PROVIDER
+}
+
 func (p BandcampProvider) FindSong(track *types.InputTrack) *types.PurchaseableTrack {
-	log.Printf("checking #%d: %s by %s from %s\n", track.Idx, track.Name, track.Artist, track.Album)
+	log.Printf("checking: %s by %s from %s\n", track.Name, track.Artist, track.Album)
 	searchCollector := p.getNewBandcampCollector()
 
 	var match *types.PurchaseableTrack
@@ -220,8 +224,6 @@ func (p BandcampProvider) FindSong(track *types.InputTrack) *types.PurchaseableT
 	if match == nil {
 		return nil
 	}
-
-	match.SongIdx = track.Idx
 
 	log.Printf("found track match: '%s' at url %s \n", match.Name, match.SongUrl)
 
