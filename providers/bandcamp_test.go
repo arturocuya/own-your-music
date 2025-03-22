@@ -1,11 +1,14 @@
-package main
+package providers_test
 
 import (
+	"ownyourmusic/providers"
 	"ownyourmusic/types"
 	"testing"
 
 	"github.com/Rhymond/go-money"
 )
+
+var bc = providers.BandcampProvider{}
 
 func TestHappyPath(t *testing.T) {
 	song := types.InputTrack{
@@ -15,7 +18,7 @@ func TestHappyPath(t *testing.T) {
 		Album:  "The English Riviera",
 	}
 
-	match := findSongInBandcamp(&song)
+	match := bc.FindSong(&song)
 
 	if match == nil {
 		t.Fatalf("match not found for %+v\n", song)
@@ -54,7 +57,7 @@ func TestSpecialCharacters(t *testing.T) {
 		Album:  "Now, Not Yet",
 	}
 
-	match := findSongInBandcamp(&song)
+	match := bc.FindSong(&song)
 
 	if match == nil {
 		t.Fatalf("match not found for %+v\n", song)
@@ -69,7 +72,7 @@ func TestSongThatShouldntExist(t *testing.T) {
 		Album:  "Not Like Us",
 	}
 
-	match := findSongInBandcamp(&song)
+	match := bc.FindSong(&song)
 
 	if match != nil {
 		t.Fatalf("found song that shouldn't exist in bandcamp: %+v", match)
@@ -84,7 +87,7 @@ func TestSongWithForeignPriceAndNoAlbum(t *testing.T) {
 		Album:  "Fløjlstordensky",
 	}
 
-	match := findSongInBandcamp(&song)
+	match := bc.FindSong(&song)
 
 	if match == nil {
 		t.Fatal("could not find song")
@@ -107,7 +110,7 @@ func TestFreeNameYourPriceSong(t *testing.T) {
 		Album:  "Untourable Album",
 	}
 
-	match := findSongInBandcamp(&song)
+	match := bc.FindSong(&song)
 
 	if match.Price == nil {
 		t.Fatal("free song price was not set at all")
@@ -126,7 +129,7 @@ func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
 		Album:  "GNX",
 	}
 
-	match := findSongInBandcamp(&song)
+	match := bc.FindSong(&song)
 
 	if match != nil {
 		t.Fatalf("this song should not exist, but match was found: %+v", match)
@@ -140,7 +143,7 @@ func TestFindJapaneseSong(t *testing.T) {
 		Artist: "ZOMBIE-CHANG",
 		Album:  "PETIT PETIT PETIT",
 	}
-	match := findSongInBandcamp(&song)
+	match := bc.FindSong(&song)
 
 	if match == nil {
 		t.Fatalf("this song by zombie chang should exist!")
@@ -155,7 +158,7 @@ func TestFindSongWithEllipsis(t *testing.T) {
 		Artist: "Ms Nina",
 		Album:  "Y Dime",
 	}
-	match := findSongInBandcamp(&song)
+	match := bc.FindSong(&song)
 
 	if match == nil {
 		t.Fatalf("this song by ms nina should exist!")
