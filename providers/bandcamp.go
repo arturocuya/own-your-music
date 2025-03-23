@@ -6,14 +6,12 @@ import (
 	"net/url"
 	"ownyourmusic/types"
 	"ownyourmusic/utils"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/Rhymond/go-money"
 	"github.com/gocolly/colly/v2"
-	"golang.org/x/text/currency"
 )
 
 var (
@@ -46,7 +44,7 @@ func pauseRequests(duration time.Duration) {
 type BandcampProvider struct{}
 
 func (p BandcampProvider) GetProviderName() string {
-	return BANDCAMP_PROVIDER
+	return types.BANDCAMP_PROVIDER
 }
 
 func (p BandcampProvider) FindSong(track *types.InputTrack) *types.PurchaseableTrack {
@@ -243,7 +241,7 @@ func (p BandcampProvider) FindSong(track *types.InputTrack) *types.PurchaseableT
 
 			match.RawPrice = priceText
 
-			price, err := p.parseBandcampPrice(priceText, currencyText)
+			price, err := utils.ParsePrice(priceText, currencyText)
 
 			if err == nil {
 				match.Price = price
@@ -296,38 +294,6 @@ func (p BandcampProvider) findSongInAlbumPage(track *types.InputTrack, albumPage
 	c.Wait()
 
 	return match
-}
-
-// reference: https://get.bandcamp.help/hc/en-us/articles/23020726236823-Which-currencies-does-Bandcamp-support
-func (p BandcampProvider) parseBandcampPrice(rawPrice string, currencyCode string) (*money.Money, error) {
-	_, err := currency.ParseISO(currencyCode)
-
-	if err != nil {
-		return nil, err
-	}
-
-	priceNumber := utils.RemoveNonNumericPrefixSuffix(rawPrice)
-	splitted := strings.Split(priceNumber, ".")
-
-	units, err := strconv.Atoi(splitted[0])
-
-	if err != nil {
-		return nil, err
-	}
-
-	amount := int64(units * 100)
-
-	if len(splitted) > 1 {
-		cents, err := strconv.Atoi(splitted[1])
-
-		if err != nil {
-			return nil, err
-		}
-
-		amount += int64(cents)
-	}
-
-	return money.New(amount, currencyCode), nil
 }
 
 func (p BandcampProvider) getNewBandcampCollector() *colly.Collector {

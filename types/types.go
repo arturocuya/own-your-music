@@ -8,11 +8,11 @@ import (
 
 type InputTrack struct {
 	ProviderName string `db:"provider_name"`
-	ProviderId string `db:"provider_id"`
-	AddedAt string `db:"added_at"` // ISO 8601
-	Name    string `db:"name"`
-	Artist  string `db:"artist"`
-	Album   string `db:"album"`
+	ProviderId   string `db:"provider_id"`
+	AddedAt      string `db:"added_at"` // ISO 8601
+	Name         string `db:"name"`
+	Artist       string `db:"artist"`
+	Album        string `db:"album"`
 }
 
 func (t InputTrack) ComposedId() string {
@@ -20,7 +20,7 @@ func (t InputTrack) ComposedId() string {
 }
 
 type PurchaseableTrack struct {
-	SongIdx    int
+	InputTrack *InputTrack
 	Name       string
 	Subheading string
 	SongUrl    string

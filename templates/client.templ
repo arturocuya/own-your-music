@@ -2,15 +2,14 @@ package templates
 
 import "ownyourmusic/types"
 import "fmt"
-import "strconv"
 
 templ ResultFound(match types.PurchaseableTrack, totalInvestment string) {
 	if match.SongUrl == "" {
-		<ul id={ fmt.Sprintf("result-for-%s", strconv.Itoa(match.SongIdx)) } hx-swap-oob="true">
+		<ul id={ fmt.Sprintf("result-for-%s", match.InputTrack.ComposedId()) } hx-swap-oob="true">
 			<li>No match found :( </li>
 		</ul>
 	} else {
-		<ul id={ fmt.Sprintf("result-for-%s", strconv.Itoa(match.SongIdx)) } hx-swap-oob="true">
+		<ul id={ fmt.Sprintf("result-for-%s", match.InputTrack.ComposedId()) } hx-swap-oob="true">
 			@MatchResult(match)
 		</ul>
 		<div id="total-investment" hx-swap-oob="true">

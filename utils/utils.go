@@ -6,8 +6,12 @@ import (
 	"net/url"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/Rhymond/go-money"
+	"golang.org/x/text/currency"
 )
 
 // taken from https://gist.github.com/sevkin/9798d67b2cb9d07cb05f89f14ba682f8
@@ -132,4 +136,36 @@ func MusicItemEquals(target string, maybe string) bool {
 	} else {
 		return strings.Contains(SanitizeForComparison(maybe), SanitizeForComparison(target))
 	}
+}
+
+func ParsePrice(rawPrice string, currencyCode string) (*money.Money, error) {
+	_, err := currency.ParseISO(currencyCode)
+
+	if err != nil {
+		return nil, err
+	}
+
+	priceNumber := RemoveNonNumericPrefixSuffix(rawPrice)
+	priceNumber = strings.ReplaceAll(priceNumber, ",", "")
+	splitted := strings.Split(priceNumber, ".")
+
+	units, err := strconv.Atoi(splitted[0])
+
+	if err != nil {
+		return nil, err
+	}
+
+	amount := int64(units * 100)
+
+	if len(splitted) > 1 {
+		cents, err := strconv.Atoi(splitted[1])
+
+		if err != nil {
+			return nil, err
+		}
+
+		amount += int64(cents)
+	}
+
+	return money.New(amount, currencyCode), nil
 }

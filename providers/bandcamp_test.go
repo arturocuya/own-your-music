@@ -8,9 +8,8 @@ import (
 	"github.com/Rhymond/go-money"
 )
 
-var bc = providers.BandcampProvider{}
-
 func TestHappyPath(t *testing.T) {
+	bc := providers.BandcampProvider{}
 	song := types.InputTrack{
 		Name:   "The Bay",
 		Artist: "Metronomy",
@@ -45,6 +44,7 @@ func TestHappyPath(t *testing.T) {
 }
 
 func TestSpecialCharacters(t *testing.T) {
+	bc := providers.BandcampProvider{}
 	song := types.InputTrack{
 		Name:   "still feel.",
 		Artist: "half•alive",
@@ -59,6 +59,7 @@ func TestSpecialCharacters(t *testing.T) {
 }
 
 func TestSongThatShouldntExist(t *testing.T) {
+	bc := providers.BandcampProvider{}
 	song := types.InputTrack{
 		Name:   "Not Like Us",
 		Artist: "Kendrick Lamar",
@@ -73,6 +74,7 @@ func TestSongThatShouldntExist(t *testing.T) {
 }
 
 func TestSongWithForeignPriceAndNoAlbum(t *testing.T) {
+	bc := providers.BandcampProvider{}
 	song := types.InputTrack{
 		Name:   "Fløjlstordensky",
 		Artist: "Hong Kong",
@@ -95,6 +97,7 @@ func TestSongWithForeignPriceAndNoAlbum(t *testing.T) {
 }
 
 func TestFreeNameYourPriceSong(t *testing.T) {
+	bc := providers.BandcampProvider{}
 	song := types.InputTrack{
 		Name:   "Tree Among Shrubs",
 		Artist: "Men I Trust",
@@ -113,6 +116,7 @@ func TestFreeNameYourPriceSong(t *testing.T) {
 }
 
 func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
+	bc := providers.BandcampProvider{}
 	song := types.InputTrack{
 		Name:   "reincarnated",
 		Artist: "Kendrick Lamar",
@@ -127,6 +131,7 @@ func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
 }
 
 func TestFindJapaneseSong(t *testing.T) {
+	bc := providers.BandcampProvider{}
 	song := types.InputTrack{
 		Name:   "愛のせいで",
 		Artist: "ZOMBIE-CHANG",
@@ -139,8 +144,8 @@ func TestFindJapaneseSong(t *testing.T) {
 	}
 }
 
-// TODO: what about "Y Dime" vs "Y ... Dime" from Ms Nina?
 func TestFindSongWithEllipsis(t *testing.T) {
+	bc := providers.BandcampProvider{}
 	song := types.InputTrack{
 		Name:   "Y Dime (feat. Tomasa del Real)",
 		Artist: "Ms Nina",
