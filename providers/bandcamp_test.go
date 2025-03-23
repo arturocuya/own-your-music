@@ -157,3 +157,21 @@ func TestFindSongWithEllipsis(t *testing.T) {
 		t.Fatalf("this song by ms nina should exist!")
 	}
 }
+
+func TestSongWithNoAlbumMatchButHasTrackMatch(t *testing.T) {
+	bc := providers.BandcampProvider{}
+	song := types.InputTrack{
+		Name:   "Run Your Mouth",
+		Artist: "The Marías",
+		Album:  "Submarine",
+	}
+	match := bc.FindSong(&song)
+
+	if match == nil {
+		t.Fatalf("this the marias song should exist!")
+	}
+
+	if match.InputTrack == nil {
+		t.Fatalf("match did not have input track ref")
+	}
+}

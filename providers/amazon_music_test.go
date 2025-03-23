@@ -42,3 +42,18 @@ func TestAmzHappyPath(t *testing.T) {
 		t.Fatalf("price \"%v\" does not match \"%v\"\n", match.Price, price)
 	}
 }
+
+func TestAmzSongWithNoArtistName(t *testing.T) {
+	amz := providers.AmazonMusicProvider{}
+	song := types.InputTrack{
+		Name:   "tv off (feat. lefty gunplay)",
+		Artist: "Kendrick Lamar",
+		Album:  "GNX",
+	}
+
+	match := amz.FindSong(&song)
+
+	if match == nil {
+		t.Fatalf("match not found for %+v\n", song)
+	}
+}

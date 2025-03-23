@@ -264,6 +264,10 @@ func (p BandcampProvider) FindSong(track *types.InputTrack) *types.PurchaseableT
 
 	detailsCollector.Wait()
 
+	if match != nil {
+		match.InputTrack = track
+	}
+
 	return match
 }
 

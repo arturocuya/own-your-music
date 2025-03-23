@@ -258,12 +258,17 @@ func findSongs(c echo.Context) error {
 	totalSongs = len(tracks)
 	processedSongs = 0
 
-	go func(mainProvider providers.Provider) {
+	go func(mainProvider providers.Provider, secondaryProvider providers.Provider) {
 		// tried parallelizing this at num procs workers, but it would reach
 		// too many requests quickly, and with the proper request spacing
 		// it wasn't that different than searching sequentially
 		for _, track := range tracks {
 			result := mainProvider.FindSong(&track)
+
+			// TODO: run on another goroutine
+			if result == nil {
+				result = secondaryProvider.FindSong(&track)
+			}
 
 			if result != nil {
 				if result.Price != nil {
@@ -281,11 +286,17 @@ func findSongs(c echo.Context) error {
 						log.Printf("%v: %v\n", key, value.Display())
 					}
 				}
+
+				if result.InputTrack == nil {
+					log.Fatal("input track was nil bruh", result)
+				}
+
 				foundSongChan <- *result
 			} else {
 				log.Println("no match found for idx", track.ComposedId())
 				foundSongChan <- types.PurchaseableTrack{
 					SongUrl: "",
+					InputTrack: &track,
 				}
 			}
 
@@ -295,7 +306,7 @@ func findSongs(c echo.Context) error {
 			// otherwise multiple writes can happen to the same response before flushing it, which will corrupt it
 			<-flushCompleteChan
 		}
-	}(providers.BandcampProvider{})
+	}(providers.BandcampProvider{}, providers.AmazonMusicProvider{})
 
 	return c.NoContent(http.StatusOK)
 }
