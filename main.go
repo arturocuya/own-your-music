@@ -3,14 +3,57 @@ package main
 import (
 	// "database/sql"
 
+	"context"
+	"fmt"
 	"log"
+	"ownyourmusic/providers"
+	"ownyourmusic/types"
 
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	_ "github.com/mattn/go-sqlite3"
 )
 
+type LambdaEvent struct {
+	InputTrack types.InputTrack `json:"input_track"`
+}
+
+type LambdaResponse struct {
+	Result *types.PurchaseableTrack `json:"result"`
+	Err    string                   `json:"error"`
+}
+
+func handler(ctx context.Context, event LambdaEvent) (LambdaResponse, error) {
+	amz := providers.AmazonMusicProvider{}
+	song := types.InputTrack{
+		Name:   "This Charming Man - 2011 Remaster",
+		Artist: "The Smiths",
+		Album:  "The Smiths",
+	}
+
+	match, err := amz.FindSong(&song, ctx)
+
+	fmt.Printf("match: %+v\n", match)
+
+	if err != nil {
+		return LambdaResponse{
+			Result: nil,
+			Err:    err.Error(),
+		}, nil
+	}
+
+	return LambdaResponse{
+		Result: match,
+		Err:    "",
+	}, nil
+}
+
 func main() {
+	lambda.Start(handler)
+}
+
+func main2() {
 	initLogger()
 
 	// we have a main database that containes the cached list of spotify songs

@@ -188,11 +188,11 @@ func loadSpotifySongs(c echo.Context) error {
 			track := userTracks.Tracks[i]
 			tracks = append(tracks, types.InputTrack{
 				ProviderName: "spotify", // TODO: generalize
-				ProviderId: string(track.ID),
-				AddedAt: track.AddedAt,
-				Name:   track.Name,
-				Artist: track.Artists[0].Name,
-				Album:  track.Album.Name,
+				ProviderId:   string(track.ID),
+				AddedAt:      track.AddedAt,
+				Name:         track.Name,
+				Artist:       track.Artists[0].Name,
+				Album:        track.Album.Name,
 			})
 			log.Printf("Retrieved track #%d \"%s\" by %s \n", i+1, track.Name, track.Artists[0].Name)
 		}
@@ -218,11 +218,11 @@ func loadSpotifySongs(c echo.Context) error {
 				track := userTracks.Tracks[i]
 				tracks = append(tracks, types.InputTrack{
 					ProviderName: "spotify", // TODO: generalize
-					ProviderId: string(track.ID),
-					AddedAt: track.AddedAt,
-					Name:   track.Name,
-					Artist: track.Artists[0].Name,
-					Album:  track.Album.Name,
+					ProviderId:   string(track.ID),
+					AddedAt:      track.AddedAt,
+					Name:         track.Name,
+					Artist:       track.Artists[0].Name,
+					Album:        track.Album.Name,
 				})
 				log.Printf("Retrieved track #%d \"%s\" by %s \n", i+offset+1, track.Name, track.Artists[0].Name)
 			}
@@ -263,11 +263,11 @@ func findSongs(c echo.Context) error {
 		// too many requests quickly, and with the proper request spacing
 		// it wasn't that different than searching sequentially
 		for _, track := range tracks {
-			result := mainProvider.FindSong(&track)
+			result, _ := mainProvider.FindSong(&track, context.Background())
 
 			// TODO: run on another goroutine
 			if result == nil {
-				result = secondaryProvider.FindSong(&track)
+				result, _ = secondaryProvider.FindSong(&track, context.Background())
 			}
 
 			if result != nil {
@@ -295,7 +295,7 @@ func findSongs(c echo.Context) error {
 			} else {
 				log.Println("no match found for idx", track.ComposedId())
 				foundSongChan <- types.PurchaseableTrack{
-					SongUrl: "",
+					SongUrl:    "",
 					InputTrack: &track,
 				}
 			}

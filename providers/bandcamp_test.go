@@ -1,6 +1,7 @@
 package providers_test
 
 import (
+	"context"
 	"ownyourmusic/providers"
 	"ownyourmusic/types"
 	"testing"
@@ -16,7 +17,7 @@ func TestHappyPath(t *testing.T) {
 		Album:  "The English Riviera",
 	}
 
-	match := bc.FindSong(&song)
+	match, _ := bc.FindSong(&song, context.Background())
 
 	if match == nil {
 		t.Fatalf("match not found for %+v\n", song)
@@ -51,7 +52,7 @@ func TestSpecialCharacters(t *testing.T) {
 		Album:  "Now, Not Yet",
 	}
 
-	match := bc.FindSong(&song)
+	match, _ := bc.FindSong(&song, context.Background())
 
 	if match == nil {
 		t.Fatalf("match not found for %+v\n", song)
@@ -66,7 +67,7 @@ func TestSongThatShouldntExist(t *testing.T) {
 		Album:  "Not Like Us",
 	}
 
-	match := bc.FindSong(&song)
+	match, _ := bc.FindSong(&song, context.Background())
 
 	if match != nil {
 		t.Fatalf("found song that shouldn't exist in bandcamp: %+v", match)
@@ -81,7 +82,7 @@ func TestSongWithForeignPriceAndNoAlbum(t *testing.T) {
 		Album:  "Fløjlstordensky",
 	}
 
-	match := bc.FindSong(&song)
+	match, _ := bc.FindSong(&song, context.Background())
 
 	if match == nil {
 		t.Fatal("could not find song")
@@ -104,7 +105,7 @@ func TestFreeNameYourPriceSong(t *testing.T) {
 		Album:  "Untourable Album",
 	}
 
-	match := bc.FindSong(&song)
+	match, _ := bc.FindSong(&song, context.Background())
 
 	if match.Price == nil {
 		t.Fatal("free song price was not set at all")
@@ -123,7 +124,7 @@ func TestSongWithAlbumThatShouldNotExist(t *testing.T) {
 		Album:  "GNX",
 	}
 
-	match := bc.FindSong(&song)
+	match, _ := bc.FindSong(&song, context.Background())
 
 	if match != nil {
 		t.Fatalf("this song should not exist, but match was found: %+v", match)
@@ -137,7 +138,7 @@ func TestFindJapaneseSong(t *testing.T) {
 		Artist: "ZOMBIE-CHANG",
 		Album:  "PETIT PETIT PETIT",
 	}
-	match := bc.FindSong(&song)
+	match, _ := bc.FindSong(&song, context.Background())
 
 	if match == nil {
 		t.Fatalf("this song by zombie chang should exist!")
@@ -151,7 +152,7 @@ func TestFindSongWithEllipsis(t *testing.T) {
 		Artist: "Ms Nina",
 		Album:  "Y Dime",
 	}
-	match := bc.FindSong(&song)
+	match, _ := bc.FindSong(&song, context.Background())
 
 	if match == nil {
 		t.Fatalf("this song by ms nina should exist!")
@@ -165,7 +166,7 @@ func TestSongWithNoAlbumMatchButHasTrackMatch(t *testing.T) {
 		Artist: "The Marías",
 		Album:  "Submarine",
 	}
-	match := bc.FindSong(&song)
+	match, _ := bc.FindSong(&song, context.Background())
 
 	if match == nil {
 		t.Fatalf("this the marias song should exist!")

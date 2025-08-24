@@ -7,12 +7,12 @@ import (
 )
 
 type InputTrack struct {
-	ProviderName string `db:"provider_name"`
-	ProviderId   string `db:"provider_id"`
-	AddedAt      string `db:"added_at"` // ISO 8601
-	Name         string `db:"name"`
-	Artist       string `db:"artist"`
-	Album        string `db:"album"`
+	ProviderName string `db:"provider_name" json:"provider_name"`
+	ProviderId   string `db:"provider_id" json:"provider_id"`
+	AddedAt      string `db:"added_at" json:"added_at"` // ISO 8601
+	Name         string `db:"name" json:"name"`
+	Artist       string `db:"artist" json:"artist"`
+	Album        string `db:"album" json:"album"`
 }
 
 func (t InputTrack) ComposedId() string {
@@ -20,13 +20,13 @@ func (t InputTrack) ComposedId() string {
 }
 
 type PurchaseableTrack struct {
-	InputTrack *InputTrack
-	Name       string
-	Subheading string
-	SongUrl    string
-	AlbumUrl   string
-	RawPrice   string
-	Price      *money.Money
+	InputTrack *InputTrack  `json:"input_track"`
+	Name       string       `json:"name"`
+	Subheading string       `json:"subheading"`
+	SongUrl    string       `json:"song_url"`
+	AlbumUrl   string       `json:"album_url"`
+	RawPrice   string       `json:"raw_price"`
+	Price      *money.Money `json:"price"`
 }
 
 type TrackAndMatch struct {

@@ -1,6 +1,7 @@
 package providers_test
 
 import (
+	"context"
 	"ownyourmusic/providers"
 	"ownyourmusic/types"
 	"testing"
@@ -16,7 +17,7 @@ func TestAmzHappyPath(t *testing.T) {
 		Album:  "The Smiths",
 	}
 
-	match := amz.FindSong(&song)
+	match, _ := amz.FindSong(&song, context.Background())
 
 	if match == nil {
 		t.Fatalf("match not found for %+v\n", song)
@@ -51,7 +52,7 @@ func TestAmzSongWithNoArtistName(t *testing.T) {
 		Album:  "GNX",
 	}
 
-	match := amz.FindSong(&song)
+	match, _ := amz.FindSong(&song, context.Background())
 
 	if match == nil {
 		t.Fatalf("match not found for %+v\n", song)

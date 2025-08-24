@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -19,26 +20,26 @@ func (p AmazonMusicProvider) GetProviderName() string {
 	return types.AMAZON_MUSIC_PROVIDER
 }
 
-func (p AmazonMusicProvider) FindSong(track *types.InputTrack) *types.PurchaseableTrack {
+func (p AmazonMusicProvider) FindSong(track *types.InputTrack, parentCtx context.Context) (*types.PurchaseableTrack, error) {
 	// TODO: this will run on a goroutine. how do we keep track of logs in same goroutine?
 	log.Printf("amz music checking: %s by %s from %s\n", track.Name, track.Artist, track.Album)
 
 	var match *types.PurchaseableTrack
 
-	/*
-		uncomment below to test non headless mode
-	*/
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		// No need to specify ExecPath - chromedp/headless-shell provides chrome
+		chromedp.Flag("headless", false),
+		chromedp.Flag("disable-gpu", true),
+		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("single-process", true),
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("remote-debugging-port", "9222"),
+	)
 
-	// allocatorContext, cancelAllocator := chromedp.NewExecAllocator(context.Background(), append(
-	// 	chromedp.DefaultExecAllocatorOptions[:],
-	// 	chromedp.Flag("headless", false),
-	// )...)
+	allocCtx, cancel := chromedp.NewExecAllocator(parentCtx, opts...)
+	defer cancel()
 
-	// defer cancelAllocator()
-
-	// ctx, cancel := chromedp.NewContext(allocatorContext)
-
-	ctx, cancel := chromedp.NewContext(context.Background())
+	chromeCtx, cancel := chromedp.NewContext(allocCtx)
 	defer cancel()
 
 	var buf string
@@ -49,35 +50,39 @@ func (p AmazonMusicProvider) FindSong(track *types.InputTrack) *types.Purchaseab
 
 	var pageTitle string
 
-	if err := chromedp.Run(ctx,
+	theUrl := fmt.Sprintf("https://www.amazon.com/s?k=%s&i=digital-music&s=exact-aware-popularity-rank", url.QueryEscape(track.Name+" "+track.Artist))
+
+	fmt.Printf("opening url: %s", theUrl)
+
+	if err := chromedp.Run(chromeCtx,
 		chromedp.Emulate(device),
-		chromedp.Navigate(fmt.Sprintf("https://www.amazon.com/s?k=%s&i=digital-music&s=exact-aware-popularity-rank", url.QueryEscape(track.Name+" "+track.Artist))),
+		chromedp.Navigate(theUrl),
 		chromedp.WaitVisible("body", chromedp.ByQuery),
 		chromedp.Title(&pageTitle),
 	); err != nil {
 		log.Println("error: from chromedp: ", err)
-		return nil
+		return nil, err
 	}
 
 	// TODO: retry with another device
 	if pageTitle == "Sorry! Something went wrong!" {
 		log.Println("error: amazon returned sorry page")
-		return nil
+		return nil, errors.New("error: amazon returned sorry page")
 	}
 
-	if err := chromedp.Run(ctx,
+	if err := chromedp.Run(chromeCtx,
 		chromedp.WaitVisible(".s-result-list.s-search-results"),
 		chromedp.OuterHTML(".s-result-list.s-search-results", &buf),
 	); err != nil {
 		log.Println("error: from chromedp: ", err)
-		return nil
+		return nil, err
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(buf))
 
 	if err != nil {
 		log.Println("error: creating goquery document: ", err)
-		return nil
+		return nil, err
 	}
 
 	sections := doc.Find("span[data-csa-c-type='item']")
@@ -158,8 +163,13 @@ func (p AmazonMusicProvider) FindSong(track *types.InputTrack) *types.Purchaseab
 			songUrlNode = headingNode.Parent().Nodes[0]
 		}
 
+		if songUrlNode.Data == "span" {
+			// another edge case
+			songUrlNode = headingNode.Children().Nodes[0].FirstChild
+		}
+
 		if songUrlNode.Data != "a" {
-			log.Printf("error: could not find song url node for song: %s by %s", track.Name, track.Artist)
+			log.Printf("error: could not find song url node for song: %s by %s on node %s", track.Name, track.Artist, songUrlNode.Data)
 			return
 		}
 
@@ -188,5 +198,5 @@ func (p AmazonMusicProvider) FindSong(track *types.InputTrack) *types.Purchaseab
 		}
 	})
 
-	return match
+	return match, nil
 }

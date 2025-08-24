@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/url"
@@ -47,7 +48,7 @@ func (p BandcampProvider) GetProviderName() string {
 	return types.BANDCAMP_PROVIDER
 }
 
-func (p BandcampProvider) FindSong(track *types.InputTrack) *types.PurchaseableTrack {
+func (p BandcampProvider) FindSong(track *types.InputTrack, parentContext context.Context) (*types.PurchaseableTrack, error) {
 	log.Printf("checking: %s by %s from %s\n", track.Name, track.Artist, track.Album)
 	searchCollector := p.getNewBandcampCollector()
 
@@ -220,7 +221,7 @@ func (p BandcampProvider) FindSong(track *types.InputTrack) *types.PurchaseableT
 	}
 
 	if match == nil {
-		return nil
+		return nil, nil
 	}
 
 	log.Printf("found track match: '%s' at url %s \n", match.Name, match.SongUrl)
@@ -268,7 +269,7 @@ func (p BandcampProvider) FindSong(track *types.InputTrack) *types.PurchaseableT
 		match.InputTrack = track
 	}
 
-	return match
+	return match, nil
 }
 
 func (p BandcampProvider) findSongInAlbumPage(track *types.InputTrack, albumPageUrl string) *types.PurchaseableTrack {
