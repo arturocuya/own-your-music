@@ -23,8 +23,6 @@ Streaming gives you access, not ownership. Own Your Music helps you close that g
 
 You run the app locally and it starts a small web server on your machine. It reads your liked tracks from the source provider (Spotify, with Amazon Music also supported), then queries Bandcamp for each one and renders the matches in the browser via HTMX and Templ. From there you can follow through to Bandcamp to purchase the tracks you want to own. Because it runs on your own machine, the matching and your library data never leave it.
 
-> _Demo: add a screenshot or short GIF of the scan results in the browser here._
-
 ## Install and usage
 
 You will need [Go](https://go.dev/dl/) installed.
